@@ -15,6 +15,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+HARVEST_PROJECT_ID="${HARVEST_PROJECT_ID:-f7f058b6-d267-45c1-9311-e0962a74e923}"
 JUDICIUM_PROJECT_ID="${JUDICIUM_PROJECT_ID:-5b45a8a0-eb6d-4791-8dd3-705978da44d0}"
 H3XA_PROJECT_ID="${H3XA_PROJECT_ID:-d88b5ad3-da33-4c65-9598-500abdcba50f}"
 INFISICAL_DOMAIN="${INFISICAL_DOMAIN:-https://crypt.noirstack.com}"
@@ -117,14 +118,14 @@ case "$PRODUCT" in
     sync_secret h3xa "$H3XA_PROJECT_ID" DATABASE_URL "$ROOT/.env.h3xa.local" h3xa_user h3xa DATABASE_URL
     ;;
   harvest)
-    sync_secret harvest "$JUDICIUM_PROJECT_ID" HARVEST_DATABASE_URL "$ROOT/.env.harvest.local" harvest_user harvest HARVEST_DATABASE_URL
+    sync_secret harvest "$HARVEST_PROJECT_ID" HARVEST_DATABASE_URL "$ROOT/.env.harvest.local" harvest_user harvest HARVEST_DATABASE_URL
     ;;
   both)
     sync_secret judicium "$JUDICIUM_PROJECT_ID" DATABASE_URL "$ROOT/.env.local" judicium_user judicium DATABASE_URL
     sync_secret h3xa "$H3XA_PROJECT_ID" DATABASE_URL "$ROOT/.env.h3xa.local" h3xa_user h3xa DATABASE_URL
     ;;
   all|"")
-    sync_secret harvest "$JUDICIUM_PROJECT_ID" HARVEST_DATABASE_URL "$ROOT/.env.harvest.local" harvest_user harvest HARVEST_DATABASE_URL
+    sync_secret harvest "$HARVEST_PROJECT_ID" HARVEST_DATABASE_URL "$ROOT/.env.harvest.local" harvest_user harvest HARVEST_DATABASE_URL
     sync_secret judicium "$JUDICIUM_PROJECT_ID" DATABASE_URL "$ROOT/.env.local" judicium_user judicium DATABASE_URL
     sync_secret h3xa "$H3XA_PROJECT_ID" DATABASE_URL "$ROOT/.env.h3xa.local" h3xa_user h3xa DATABASE_URL
     ;;

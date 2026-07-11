@@ -120,21 +120,11 @@ npm run osint:daily:dry
 npm run osint:daily
 ```
 
-Cron (installed on this host at 06:15 UTC):
+**Production:** daily collection runs inside the Harvest container via the platform scheduler (`HARVEST_DAILY_PULL_*` env vars in Infisical). No VPS crontab or systemd timer is required.
 
-```
-15 6 * * * cd /home/hira/gitlab/repos/judicium && .../daily-pull.sh >> logs/osint-harvest/cron.log 2>&1
-```
+Manual trigger via Harvest Admin **Platform** tab or `POST /api/platform/scheduler/trigger`.
 
-Optional systemd user timer (units in this folder):
-
-```bash
-cp scripts/osint-harvest/osint-harvest-daily.{service,timer} ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now osint-harvest-daily.timer
-```
-
-Logs: `logs/osint-harvest/daily-*.log` and `logs/osint-harvest/latest-summary.json`.
+Logs: `logs/osint-harvest/scheduler-daily-*.log` and platform config run history.
 
 Env overrides: `PRODUCTS`, `HARVESTERS`, `MAX_RESULTS`, `TIMEOUT_MS`, `TARGETS_FILE`, `SYNC_INFISICAL=0`.
 

@@ -14,6 +14,7 @@ export type HarvestAuthUser = {
   email?: string;
   name?: string;
   preferred_username?: string;
+  roles?: string[];
 };
 
 type OidcState = { state: string; verifier: string; returnTo: string };
@@ -48,7 +49,42 @@ function cfg() {
     logoutUrl: `${issuer}/protocol/openid-connect/logout`,
     scope: process.env.KEYCLOAK_SCOPE || 'openid profile email',
     cookieSecure: process.env.NODE_ENV === 'production' || process.env.HARVEST_COOKIE_SECURE === '1',
+    requiredRoles: (process.env.HARVEST_REQUIRED_ROLES || process.env.HARVEST_REQUIRED_ROLE || 'harvest.noirstack.com')
+      .split(',')
+      .map((r) => r.trim())
+      .filter(Boolean),
   };
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const part = token.split('.')[1];
+  if (!part) return null;
+  try {
+    const json = Buffer.from(part.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function extractRoles(accessToken: string, clientId: string): string[] {
+  const payload = decodeJwtPayload(accessToken);
+  if (!payload) return [];
+  const realmRoles = Array.isArray((payload.realm_access as { roles?: string[] } | undefined)?.roles)
+    ? (payload.realm_access as { roles: string[] }).roles.map(String)
+    : [];
+  const clientRoles = Array.isArray(
+    (payload.resource_access as Record<string, { roles?: string[] }> | undefined)?.[clientId]?.roles,
+  )
+    ? (payload.resource_access as Record<string, { roles: string[] }>)[clientId].roles.map(String)
+    : [];
+  return Array.from(new Set([...realmRoles, ...clientRoles]));
+}
+
+function userHasRequiredRoles(user: HarvestAuthUser, requiredRoles: string[]): boolean {
+  if (!requiredRoles.length) return true;
+  const owned = new Set((user.roles || []).map((r) => r.trim()).filter(Boolean));
+  return requiredRoles.some((role) => owned.has(role));
 }
 
 function parseCookies(header: string | undefined): Record<string, string> {
@@ -189,6 +225,7 @@ async function exchangeCode(code: string, verifier: string) {
       preferred_username: userInfo.preferred_username
         ? String(userInfo.preferred_username)
         : undefined,
+      roles: extractRoles(String(tokenJson.access_token), c.clientId),
     } satisfies HarvestAuthUser,
   };
 }
@@ -228,6 +265,15 @@ export function requireHarvestAuth(req: Request, res: Response, next: NextFuncti
 
   const user = getHarvestSession(req);
   if (user) {
+    if (!userHasRequiredRoles(user, c.requiredRoles)) {
+      if (wantsJson) {
+        return res.status(403).json({
+          error: 'forbidden',
+          message: `Missing required role: ${c.requiredRoles.join(' or ')}`,
+        });
+      }
+      return res.status(403).type('text/plain').send('Forbidden — missing Harvest access role');
+    }
     (req as any).harvestUser = user;
     return next();
   }
@@ -257,6 +303,7 @@ export function registerHarvestAuthRoutes(app: Express): void {
     const user = getHarvestSession(req);
     res.json({
       required: c.required,
+      requiredRoles: c.requiredRoles,
       authenticated: Boolean(user),
       user,
       issuer: c.issuer,

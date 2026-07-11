@@ -2,8 +2,7 @@
 # Harvest deploy wrapper — Infisical → env → podman-compose
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export INFISICAL_PROJECT_ID="${INFISICAL_PROJECT_ID:-5b45a8a0-eb6d-4791-8dd3-705978da44d0}"
 export COMPOSE_FILE="${COMPOSE_FILE:-$ROOT/compose.vps.yml}"
 export COMPOSE_PROJECT="${COMPOSE_PROJECT:-harvest}"
-export REQUIRED_VARS="HARVEST_DATABASE_URL"
+export REQUIRED_VARS="HARVEST_DATABASE_URL KEYCLOAK_CLIENT_ID KEYCLOAK_CLIENT_SECRET COLLECTION_INTERNAL_TOKEN CASCADES_API_URL KEYCLOAK_REALM HARVEST_AUTH_REQUIRED HARVEST_COOKIE_SECURE"
 exec /home/hira/scripts/deploy.sh "$@"

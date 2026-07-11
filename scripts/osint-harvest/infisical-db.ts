@@ -42,8 +42,7 @@ export const PRODUCT_PROJECTS: Record<
     envKey: 'DATABASE_URL',
   },
   harvest: {
-    // Shared store secret lives on Judicium Infisical project as HARVEST_DATABASE_URL
-    projectId: process.env.JUDICIUM_PROJECT_ID || '5b45a8a0-eb6d-4791-8dd3-705978da44d0',
+    projectId: process.env.HARVEST_PROJECT_ID || process.env.INFISICAL_PROJECT_ID || 'f7f058b6-d267-45c1-9311-e0962a74e923',
     expectUser: 'harvest_user',
     expectDb: 'harvest',
     envFile: '.env.harvest.local',

@@ -6,7 +6,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Radar, RefreshCw, Play, FileText, AlertTriangle, Check, Clock,
-  Database, Crosshair, ListTree, Terminal, LogIn, LogOut, Brain,
+  Database, Crosshair, ListTree, Terminal, LogIn, LogOut, Brain, Settings,
 } from 'lucide-react';
 import { cn } from '../types';
 
@@ -104,7 +104,7 @@ function statusTone(status: string) {
 
 export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) => {
   const [auth, setAuth] = useState<HarvestAuthState | null>(null);
-  const [tab, setTab] = useState<'ops' | 'findings' | 'registry' | 'graph' | 'intelligence'>('findings');
+  const [tab, setTab] = useState<'ops' | 'findings' | 'registry' | 'graph' | 'intelligence' | 'platform'>('findings');
   const [data, setData] = useState<HarvestStatus | null>(null);
   const [targetsText, setTargetsText] = useState('');
   const [targetsDirty, setTargetsDirty] = useState(false);
@@ -114,7 +114,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
   const [runDetail, setRunDetail] = useState<{ run: HarvestRun; findings: HarvestFinding[] } | null>(null);
   const [form, setForm] = useState({
     product: 'shared',
-    target: 'example.com',
+    target: '',
     caseId: '',
     strategy: 'passive-domain-standard',
   });
@@ -179,6 +179,81 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
   const [intelDashboard, setIntelDashboard] = useState<Array<Record<string, unknown>>>([]);
   const [intelBusy, setIntelBusy] = useState(false);
   const [claimDraft, setClaimDraft] = useState('');
+
+  const [platformStatus, setPlatformStatus] = useState<Record<string, unknown> | null>(null);
+  const [platformConfig, setPlatformConfig] = useState<Record<string, unknown> | null>(null);
+  const [platformBusy, setPlatformBusy] = useState<string | null>(null);
+
+  const loadPlatform = useCallback(async () => {
+    setPlatformBusy('load');
+    try {
+      const [statusRes, configRes] = await Promise.all([
+        fetch('/api/harvest/platform/status', { credentials: 'include' }),
+        fetch('/api/harvest/platform/config', { credentials: 'include' }),
+      ]);
+      if (!statusRes.ok) throw new Error(`platform status ${statusRes.status}`);
+      if (!configRes.ok) throw new Error(`platform config ${configRes.status}`);
+      setPlatformStatus(await statusRes.json());
+      const cfgBody = await configRes.json();
+      setPlatformConfig(cfgBody.config || cfgBody);
+    } catch (e) {
+      setError((e as Error).message || 'Failed to load platform config');
+    } finally {
+      setPlatformBusy(null);
+    }
+  }, []);
+
+  const savePlatform = useCallback(async () => {
+    if (!platformConfig) return;
+    setPlatformBusy('save');
+    try {
+      const res = await fetch('/api/harvest/platform/config', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: platformConfig }),
+      });
+      if (!res.ok) throw new Error(`save ${res.status}`);
+      await loadPlatform();
+    } catch (e) {
+      setError((e as Error).message || 'Failed to save platform config');
+    } finally {
+      setPlatformBusy(null);
+    }
+  }, [platformConfig, loadPlatform]);
+
+  const runPlatformJob = useCallback(async (kind: string) => {
+    setPlatformBusy(kind);
+    try {
+      const res = await fetch(`/api/harvest/platform/run/${kind}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      if (!res.ok) throw new Error(`run ${kind} ${res.status}`);
+      await loadPlatform();
+    } catch (e) {
+      setError((e as Error).message || `Failed to run ${kind}`);
+    } finally {
+      setPlatformBusy(null);
+    }
+  }, [loadPlatform]);
+
+  const patchPlatform = useCallback((path: string[], value: unknown) => {
+    setPlatformConfig((prev) => {
+      if (!prev) return prev;
+      const next = JSON.parse(JSON.stringify(prev)) as Record<string, unknown>;
+      let cursor: Record<string, unknown> = next;
+      for (let i = 0; i < path.length - 1; i++) {
+        const key = path[i];
+        if (!cursor[key] || typeof cursor[key] !== 'object') cursor[key] = {};
+        cursor = cursor[key] as Record<string, unknown>;
+      }
+      cursor[path[path.length - 1]] = value;
+      return next;
+    });
+  }, []);
 
   const checkAuth = useCallback(async () => {
     const res = await fetch('/api/harvest/auth/status', { credentials: 'include' });
@@ -476,7 +551,10 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
     if (auth?.authenticated && tab === 'intelligence') {
       void loadIntelligence();
     }
-  }, [auth?.authenticated, tab, loadIntelligence]);
+    if (auth?.authenticated && tab === 'platform') {
+      void loadPlatform();
+    }
+  }, [auth?.authenticated, tab, loadIntelligence, loadPlatform]);
 
   useEffect(() => {
     if (auth?.authenticated && tab === 'findings') {
@@ -641,6 +719,17 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 )}
               >
                 Ops
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab('platform')}
+                className={cn(
+                  'px-3 py-1 text-[11px]',
+                  tab === 'platform' ? 'bg-ink/[0.08] text-ink/80' : 'text-ink/40 hover:text-ink/65',
+                )}
+              >
+                <Settings size={12} className="inline mr-1" />
+                Platform
               </button>
             </div>
           )}
@@ -993,7 +1082,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 <input
                   value={targetForm.value}
                   onChange={(e) => setTargetForm((f) => ({ ...f, value: e.target.value }))}
-                  placeholder="example.com"
+                  placeholder="noirstack.com"
                   className="w-full bg-[#0a0a0f] border border-ink/[0.08] px-2 py-1.5 text-[11px] font-mono"
                 />
               </label>
@@ -1138,7 +1227,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 <input
                   value={graphSource}
                   onChange={(e) => setGraphSource(e.target.value)}
-                  placeholder="example.com"
+                  placeholder="noirstack.com"
                   className="bg-[#0a0a0f] border border-ink/[0.08] px-2 py-1.5 text-[11px] font-mono min-w-[12rem]"
                 />
               </label>
@@ -1327,6 +1416,85 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 </table>
               </div>
             </div>
+          </section>
+        )}
+
+        {tab === 'platform' && platformConfig && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-[10px] uppercase tracking-wider text-ink/45">
+                Platform — schedulers, feeds, Judicium integration
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => void loadPlatform()} disabled={!!platformBusy} className="text-[10px] text-ink/45 hover:text-ink/70">Refresh</button>
+                <button type="button" onClick={() => void savePlatform()} disabled={!!platformBusy} className="px-3 py-1 border border-ink/[0.12] text-[11px] text-ink/70 hover:text-ink/90">
+                  {platformBusy === 'save' ? 'Saving…' : 'Save config'}
+                </button>
+              </div>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3">
+                <div className="text-[10px] uppercase tracking-wider text-ink/45">Collection scheduler</div>
+                <label className="flex items-center gap-2 text-[11px] text-ink/60">
+                  <input type="checkbox" checked={Boolean((platformConfig.scheduler as Record<string, unknown>)?.enabled)} onChange={(e) => patchPlatform(['scheduler', 'enabled'], e.target.checked)} />
+                  Scheduler enabled
+                </label>
+                <label className="flex items-center gap-2 text-[11px] text-ink/60">
+                  <input type="checkbox" checked={Boolean(((platformConfig.scheduler as Record<string, unknown>)?.cascadesDuePull as Record<string, unknown>)?.enabled)} onChange={(e) => patchPlatform(['scheduler', 'cascadesDuePull', 'enabled'], e.target.checked)} />
+                  Cascades due pull (passive-domain-collection)
+                </label>
+                <div className="flex items-center gap-2 text-[11px] text-ink/55">
+                  <span>Due interval (min)</span>
+                  <input type="number" min={5} className="w-20 bg-ink/[0.04] border border-ink/[0.08] px-2 py-1 font-mono" value={Number(((platformConfig.scheduler as Record<string, unknown>)?.cascadesDuePull as Record<string, unknown>)?.intervalMinutes || 60)} onChange={(e) => patchPlatform(['scheduler', 'cascadesDuePull', 'intervalMinutes'], Number(e.target.value))} />
+                </div>
+                <label className="flex items-center gap-2 text-[11px] text-ink/60">
+                  <input type="checkbox" checked={Boolean(((platformConfig.scheduler as Record<string, unknown>)?.dailyPull as Record<string, unknown>)?.enabled)} onChange={(e) => patchPlatform(['scheduler', 'dailyPull', 'enabled'], e.target.checked)} />
+                  Daily pull cycle
+                </label>
+                <select className="bg-ink/[0.04] border border-ink/[0.08] px-2 py-1 text-[11px]" value={String(((platformConfig.scheduler as Record<string, unknown>)?.dailyPull as Record<string, unknown>)?.mode || 'cascades-due')} onChange={(e) => patchPlatform(['scheduler', 'dailyPull', 'mode'], e.target.value)}>
+                  <option value="cascades-due">Cascades due (in-process)</option>
+                  <option value="shell">Shell daily-pull.sh</option>
+                  <option value="both">Both</option>
+                  <option value="disabled">Disabled</option>
+                </select>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {['cascades-due', 'daily-pull'].map((kind) => (
+                    <button key={kind} type="button" disabled={!!platformBusy} onClick={() => void runPlatformJob(kind)} className="flex items-center gap-1 px-2 py-1 border border-ink/[0.1] text-[10px] text-ink/60 hover:text-ink/85">
+                      <Play size={10} /> Run {kind}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3">
+                <div className="text-[10px] uppercase tracking-wider text-ink/45">Community feeds</div>
+                <label className="flex items-center gap-2 text-[11px] text-ink/60">
+                  <input type="checkbox" checked={Boolean((platformConfig.communityFeeds as Record<string, unknown>)?.enabled)} onChange={(e) => patchPlatform(['communityFeeds', 'enabled'], e.target.checked)} />
+                  Feeds worker enabled
+                </label>
+                <label className="flex items-center gap-2 text-[11px] text-ink/60">
+                  <input type="checkbox" checked={Boolean((platformConfig.communityFeeds as Record<string, unknown>)?.delegateFromJudicium)} onChange={(e) => patchPlatform(['communityFeeds', 'delegateFromJudicium'], e.target.checked)} />
+                  Judicium delegates community pull to Harvest
+                </label>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {['feeds-layers', 'feeds-rss', 'feeds-daily'].map((kind) => (
+                    <button key={kind} type="button" disabled={!!platformBusy} onClick={() => void runPlatformJob(kind)} className="flex items-center gap-1 px-2 py-1 border border-ink/[0.1] text-[10px] text-ink/60 hover:text-ink/85">
+                      <Play size={10} /> {kind.replace('feeds-', '')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3">
+              <div className="text-[10px] uppercase tracking-wider text-ink/45">Judicium env (copy to judicium compose)</div>
+              {Boolean((platformStatus?.judicium as Record<string, unknown> | undefined)?.suggestedEnv) && (
+                <pre className="text-[10px] font-mono text-ink/45 bg-ink/[0.03] border border-ink/[0.06] p-3 overflow-auto">
+                  {JSON.stringify((platformStatus?.judicium as Record<string, unknown>).suggestedEnv, null, 2)}
+                </pre>
+              )}
+            </div>
+            {Boolean(platformStatus?.scheduler) && (
+              <pre className="text-[10px] font-mono text-ink/45 border border-ink/[0.05] p-3 overflow-auto max-h-48">{JSON.stringify(platformStatus?.scheduler, null, 2)}</pre>
+            )}
           </section>
         )}
 

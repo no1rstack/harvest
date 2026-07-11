@@ -25,6 +25,8 @@ import {
 import { registerHarvestRoutes } from './src/routes/harvestRoutes.js';
 import { registerCollectionRoutes } from './src/routes/collectionRoutes.js';
 import { registerIntelligenceRoutes } from './src/routes/intelligenceRoutes.js';
+import { registerPlatformRoutes, bootPlatformScheduler } from './src/routes/platformRoutes.js';
+import { registerFeedsRoutes } from './src/routes/feedsRoutes.js';
 import { renderMetricsText } from './src/api/metrics.js';
 
 const app = express();
@@ -106,6 +108,8 @@ app.use(redirectHarvestSurface);
 registerHarvestRoutes(app);
 registerCollectionRoutes(app);
 registerIntelligenceRoutes(app);
+registerPlatformRoutes(app);
+registerFeedsRoutes(app);
 
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
@@ -146,6 +150,7 @@ async function startServer() {
   const BIND_HOST = process.env.HOST || process.env.BIND_HOST || '0.0.0.0';
   server.listen(PORT, BIND_HOST, () => {
     console.log(`[harvest] Collection Platform on http://${BIND_HOST}:${PORT}`);
+    bootPlatformScheduler();
   });
 }
 

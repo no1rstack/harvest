@@ -27,20 +27,26 @@ services:
       - KEYCLOAK_HOME_URL
       - HARVEST_AUTH_REQUIRED
       - HARVEST_COOKIE_SECURE
+      - HARVEST_PUBLIC_URL
+      - HARVEST_SCHEDULER_ENABLED
+      - HARVEST_CASCADES_DUE_ENABLED
+      - HARVEST_CASCADES_DUE_INTERVAL_MINUTES
+      - HARVEST_DAILY_PULL_ENABLED
+      - HARVEST_DAILY_PULL_MODE
+      - HARVEST_DAILY_PULL_INTERVAL_HOURS
+      - HARVEST_FEEDS_ENABLED
+      - HARVEST_FEEDS_DELEGATE_JUDICIUM
+      - HARVEST_PLATFORM_CONFIG_DIR
+      - HARVEST_REQUIRED_ROLES
+      - HARVEST_REQUIRED_ROLE
       - H3XA_DATABASE_URL
+      - H3XA_PG_HOST_REWRITE
       - GIT_COMMIT_SHA
       - CI_PIPELINE_ID
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.harvest.rule=Host(`harvest.noirstack.com`)"
-      - "traefik.http.routers.harvest.entrypoints=websecure"
-      - "traefik.http.routers.harvest.tls.certresolver=letsencrypt"
-      - "traefik.http.services.harvest.loadbalancer.server.port=3000"
-      - "traefik.http.routers.harvest-http.rule=Host(`harvest.noirstack.com`)"
-      - "traefik.http.routers.harvest-http.entrypoints=web"
-      - "traefik.http.routers.harvest-http.middlewares=redirect-to-https@file"
     networks:
       - traefik
+    volumes:
+      - harvest-platform-data:/app/data
     healthcheck:
       test:
         [
@@ -55,3 +61,6 @@ services:
 networks:
   traefik:
     external: true
+
+volumes:
+  harvest-platform-data:

@@ -15,12 +15,28 @@ Standalone product extracted from Judicium. Owns:
 | **cascades** | Connector workflow execution |
 | **judicium** | Investigation workbench — consumes Intelligence API |
 
-## Env
+## Env (Infisical)
 
-- `HARVEST_DATABASE_URL` — Postgres (`harvest_user@harvest`)
-- `COLLECTION_INTERNAL_TOKEN` — Cascades → step APIs
-- `CASCADES_API_URL` — enqueue workflows
-- `KEYCLOAK_*` — UI auth
+**Project:** `f7f058b6-d267-45c1-9311-e0962a74e923` @ [crypt.noirstack.com](https://crypt.noirstack.com) (`prod`)
+
+Bootstrap all keys from Judicium/Keycloak sources (one-time):
+
+```bash
+./scripts/infisical/bootstrap-harvest-secrets.sh
+```
+
+| Variable | Purpose |
+|----------|---------|
+| `HARVEST_DATABASE_URL` | Postgres (`harvest_user@harvest`) |
+| `H3XA_DATABASE_URL` | Optional STIX bridge |
+| `COLLECTION_INTERNAL_TOKEN` | Cascades → Harvest step APIs |
+| `CASCADES_API_URL` | Enqueue workflows (`http://cascades:3000` on VPS) |
+| `CASCADES_PUBLIC_URL` | UI links |
+| `KEYCLOAK_*` | Harvest UI auth |
+| `HARVEST_SCHEDULER_*` / `HARVEST_FEEDS_*` | Platform tab schedulers |
+| `GHCR_*` | CI image push |
+
+Deploy reads **only** the Harvest project (no Judicium/Keycloak project merge).
 
 ## Local dev
 
