@@ -1,0 +1,23 @@
+[Unit]
+Description=Judicium/H3XA daily OSINT harvest → Postgres
+Documentation=file:///home/hira/gitlab/repos/judicium/scripts/osint-harvest/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/hira/gitlab/repos/judicium
+Environment=HOME=/home/hira
+Environment=PATH=/home/hira/.nvm/versions/node/v24.17.0/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PRODUCTS=h3xa,judicium
+Environment=HARVESTERS=crtsh,dns,rdap,wayback,hackertarget,urlhaus,rss
+Environment=MAX_RESULTS=100
+Environment=TIMEOUT_MS=25000
+Environment=SYNC_INFISICAL=1
+# Optional: source Infisical token file inside the script
+ExecStart=/bin/bash /home/hira/gitlab/repos/judicium/scripts/osint-harvest/daily-pull.sh
+Nice=10
+TimeoutStartSec=2h
+
+[Install]
+WantedBy=default.target

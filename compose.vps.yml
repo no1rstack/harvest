@@ -1,0 +1,57 @@
+# Secrets managed via Infisical (crypt.noirstack.com)
+# Deploy: ./deploy.sh
+
+services:
+  harvest:
+    container_name: harvest
+    image: ghcr.io/no1rstack/harvest:${HARVEST_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    security_opt:
+      - seccomp=unconfined
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME
+      - HARVEST_DATABASE_URL
+      - DATABASE_URL
+      - HARVEST_PG_HOST_REWRITE
+      - COLLECTION_INTERNAL_TOKEN
+      - COLLECTION_API_URL
+      - CASCADES_API_URL
+      - CASCADES_PUBLIC_URL
+      - KEYCLOAK_BASE_URL
+      - KEYCLOAK_REALM
+      - KEYCLOAK_CLIENT_ID
+      - KEYCLOAK_CLIENT_SECRET
+      - KEYCLOAK_REDIRECT_URI
+      - KEYCLOAK_HOME_URL
+      - HARVEST_AUTH_REQUIRED
+      - HARVEST_COOKIE_SECURE
+      - H3XA_DATABASE_URL
+      - GIT_COMMIT_SHA
+      - CI_PIPELINE_ID
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.harvest.rule=Host(`harvest.noirstack.com`)"
+      - "traefik.http.routers.harvest.entrypoints=websecure"
+      - "traefik.http.routers.harvest.tls.certresolver=letsencrypt"
+      - "traefik.http.services.harvest.loadbalancer.server.port=3000"
+      - "traefik.http.routers.harvest-http.rule=Host(`harvest.noirstack.com`)"
+      - "traefik.http.routers.harvest-http.entrypoints=web"
+      - "traefik.http.routers.harvest-http.middlewares=redirect-to-https@file"
+    networks:
+      - traefik
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+networks:
+  traefik:
+    external: true

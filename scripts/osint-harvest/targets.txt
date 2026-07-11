@@ -1,0 +1,31 @@
+# OSINT daily harvest targets (one per line).
+# Lines starting with # are ignored.
+#
+# Formats:
+#   domain
+#   domain case_id
+#   product domain case_id
+#
+# product is optional (h3xa | judicium | harvest). When omitted, tagged as shared.
+# case_id is optional. Prefer apex domains — crtsh/dns expand subdomains.
+
+# --- Platform / NoirStack ---
+harvest noirstack.com
+harvest hirabarton.io
+
+# --- H3XA / HexArch ---
+h3xa hex-arch.com
+h3xa hexarch.systems
+
+# --- Judicium ---
+judicium judicium.app
+
+# --- Other product surfaces (shared harvest store) ---
+harvest aitracer.app
+harvest cascades.work
+harvest codecraft.icu
+harvest ledgerbill.app
+harvest noirai.app
+harvest openaiguardrails.org
+harvest schemarch.com
+harvest wordmaker.cc

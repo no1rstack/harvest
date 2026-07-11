@@ -1,0 +1,10 @@
+# Harvest — Collection Platform
+
+node_modules/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+logs/

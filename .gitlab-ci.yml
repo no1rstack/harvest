@@ -1,0 +1,113 @@
+include:
+  - project: hexveil/hexarchproof
+    ref: main
+    file: /.gitlab-ci-build-template.yml
+
+stages:
+  - test
+  - build
+  - deploy
+  - health-check
+
+variables:
+  IMAGE_NAME: ghcr.io/no1rstack/harvest
+  COMPOSE_FILE: compose.vps.yml
+  COMPOSE_PROJECT_NAME: harvest
+  CONTAINER_NAME: harvest
+  ENV_FILE: .env.vps
+  INFISICAL_WORKSPACE_ID: "5b45a8a0-eb6d-4791-8dd3-705978da44d0"
+  INFISICAL_PROJECT_ID: "5b45a8a0-eb6d-4791-8dd3-705978da44d0"
+  INFISICAL_DOMAIN: "https://crypt.noirstack.com"
+  INFISICAL_ENV: "prod"
+  GIT_DEPTH: "0"
+
+.ensure_vps_tools: &ensure_vps_tools
+  - |
+    export PATH="${HOME}/.local/bin:${HOME}/.nvm/versions/node/v24.17.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    for cmd in curl jq podman podman-compose; do
+      command -v "$cmd" >/dev/null || { echo "missing: $cmd"; exit 1; }
+    done
+
+.vps_job: &vps_job
+  tags: [vps, podman, production]
+
+.ensure_node_build: &ensure_node_build
+  - |
+    export PATH="${HOME}/.nvm/versions/node/v24.17.0/bin:${HOME}/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    for cmd in node npm; do command -v "$cmd" >/dev/null || exit 1; done
+
+.podman_auth: &podman_auth
+  before_script:
+    - echo "$GHCR_PASSWORD" | podman login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+
+test:
+  stage: test
+  <<: *vps_job
+  variables:
+    NODE_ENV: test
+  script:
+    - *ensure_node_build
+    - npm ci --include=dev --legacy-peer-deps
+    - npx esbuild server.ts --bundle --platform=node --format=esm --outfile=/tmp/server-check.js
+    - npx tsc --noEmit 2>&1 | tail -30 || true
+    - npx vitest run tests/intelligence-phase0.test.ts
+
+build:
+  stage: build
+  <<: *vps_job
+  variables:
+    NODE_ENV: production
+  script:
+    - *ensure_node_build
+    - npm ci --legacy-peer-deps
+    - npx vite build
+  artifacts:
+    paths:
+      - dist/
+      - server.ts
+      - src/
+      - scripts/
+      - package.json
+      - package-lock.json
+      - Containerfile
+      - compose.vps.yml
+    expire_in: 1 day
+
+build-image:
+  stage: deploy
+  tags: [vps, podman, production]
+  <<: *podman_auth
+  script:
+    - *ensure_vps_tools
+    - |
+      podman build --network host --security-opt seccomp=unconfined \
+        -t "$IMAGE_NAME:latest" -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" \
+        -f Containerfile .
+    - podman push "$IMAGE_NAME:latest"
+    - podman push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  needs:
+    - build
+
+deploy:
+  stage: deploy
+  <<: *vps_job
+  script:
+    - *ensure_vps_tools
+    - chmod +x deploy.sh
+    - ./deploy.sh
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  needs:
+    - build-image
+
+health-check:
+  stage: health-check
+  <<: *vps_job
+  script:
+    - curl -fsS https://harvest.noirstack.com/api/health
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  needs:
+    - deploy
