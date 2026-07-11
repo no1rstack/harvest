@@ -71,6 +71,7 @@ build:
       - package-lock.json
       - Containerfile
       - compose.vps.yml
+      - .infisical.json
     expire_in: 1 day
 
 build-image:

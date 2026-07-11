@@ -10,7 +10,7 @@ import { createServer } from 'http';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-import { createViteServer } from 'vite';
+import { createServer as createViteServer } from 'vite';
 
 for (const file of ['.env.harvest.local', '.env.local', '.env']) {
   const full = path.join(process.cwd(), file);

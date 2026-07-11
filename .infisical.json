@@ -1,0 +1,10 @@
+{
+  "workspaceId": "5b45a8a0-eb6d-4791-8dd3-705978da44d0",
+  "defaultEnvironment": "prod",
+  "infisicalDomain": "https://crypt.noirstack.com",
+  "gitBranchToEnvironmentMapping": {
+    "main": "prod",
+    "master": "prod",
+    "dev": "dev"
+  }
+}
