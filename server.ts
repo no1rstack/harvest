@@ -32,6 +32,8 @@ import { renderMetricsText } from './src/api/metrics.js';
 const app = express();
 const server = createServer(app);
 
+app.set('trust proxy', true);
+
 app.use(express.json({ limit: '1mb' }));
 
 app.use((req, res, next) => {
