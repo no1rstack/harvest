@@ -65,6 +65,7 @@ const apiLimiter = rateLimit({
   max: 600,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
 });
 app.use('/api/', apiLimiter);
 
@@ -149,7 +150,7 @@ async function startServer() {
   }
 
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3020;
-  const BIND_HOST = process.env.HOST || process.env.BIND_HOST || '0.0.0.0';
+  const BIND_HOST = process.env.HOST || process.env.BIND_HOST || '127.0.0.1';
   server.listen(PORT, BIND_HOST, () => {
     console.log(`[harvest] Collection Platform on http://${BIND_HOST}:${PORT}`);
     bootPlatformScheduler();
