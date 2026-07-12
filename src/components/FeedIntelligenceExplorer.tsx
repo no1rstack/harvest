@@ -62,7 +62,7 @@ export function FeedIntelligenceExplorer() {
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
     p.set('hours', String(hours));
-    p.set('limit', '200');
+    p.set('limit', '500');
     if (stream) p.set('stream', stream);
     if (category) p.set('category', category);
     if (q) p.set('q', q);
@@ -211,6 +211,21 @@ export function FeedIntelligenceExplorer() {
     });
   };
 
+  const allVisibleSelected = items.length > 0 && items.every((item) => selected.has(item.id));
+
+  const selectAllVisible = () => {
+    setSelected(new Set(items.map((item) => item.id)));
+  };
+
+  const clearSelection = () => {
+    setSelected(new Set());
+  };
+
+  const toggleSelectAllVisible = () => {
+    if (allVisibleSelected) clearSelection();
+    else selectAllVisible();
+  };
+
   const runExpand = async (enqueue: boolean) => {
     setBusy(true);
     setExpandResult(null);
@@ -335,6 +350,26 @@ export function FeedIntelligenceExplorer() {
             <span>{stats?.total ?? items.length} items in window</span>
             <span>·</span>
             <span>{selected.size} selected</span>
+            {items.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  disabled={busy || allVisibleSelected}
+                  onClick={selectAllVisible}
+                  className="border border-ink/[0.08] px-2 py-1 text-ink/55 hover:text-ink/75 disabled:opacity-40"
+                >
+                  Select all ({items.length})
+                </button>
+                <button
+                  type="button"
+                  disabled={busy || selected.size === 0}
+                  onClick={clearSelection}
+                  className="border border-ink/[0.08] px-2 py-1 text-ink/55 hover:text-ink/75 disabled:opacity-40"
+                >
+                  Clear
+                </button>
+              </>
+            )}
             <button type="button" disabled={busy} onClick={() => void runExpand(false)} className="ml-auto border border-ink/[0.08] px-2 py-1 text-ink/55 hover:text-ink/75 flex items-center gap-1">
               <Sparkles size={11} /> Seed targets
             </button>
@@ -348,7 +383,16 @@ export function FeedIntelligenceExplorer() {
             <table className="w-full text-[11px]">
               <thead className="sticky top-0 bg-[#06060A]">
                 <tr className="text-ink/40 text-left border-b border-ink/[0.06]">
-                  <th className="py-2 px-2 w-8" />
+                  <th className="py-2 px-2 w-8">
+                    <input
+                      type="checkbox"
+                      checked={allVisibleSelected}
+                      onChange={toggleSelectAllVisible}
+                      disabled={!items.length || busy}
+                      title={allVisibleSelected ? 'Clear selection' : `Select all ${items.length} visible items`}
+                      aria-label={allVisibleSelected ? 'Clear selection' : 'Select all visible items'}
+                    />
+                  </th>
                   <th className="py-2 pr-2">Title</th>
                   <th className="py-2 pr-2">Stream</th>
                   <th className="py-2 pr-2">Keywords</th>
