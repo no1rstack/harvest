@@ -11,6 +11,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - BIND_HOST=0.0.0.0
       - HOSTNAME
       - HARVEST_DATABASE_URL
       - HARVEST_PG_HOST_REWRITE
