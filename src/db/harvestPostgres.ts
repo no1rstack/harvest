@@ -1,6 +1,6 @@
 /**
  * Dedicated pool for the shared harvest store (harvest_user @ harvest).
- * Prefer HARVEST_DATABASE_URL; fall back to product DATABASE_URL only if unset.
+ * Production uses HARVEST_DATABASE_URL only (never generic DATABASE_URL).
  */
 
 import { Pool, type PoolConfig } from 'pg';
@@ -17,7 +17,10 @@ function loadHarvestUrl(): string | undefined {
   if (process.env.HARVEST_DATABASE_URL) {
     return hostify(process.env.HARVEST_DATABASE_URL);
   }
-  // Host-side overlay used by CLI / Traefik harvest process
+  if (process.env.NODE_ENV === 'production') {
+    return undefined;
+  }
+  // Host-side overlay used by CLI / local dev only
   for (const file of ['.env.harvest.local', '.env.local']) {
     const full = path.join(process.cwd(), file);
     if (!fs.existsSync(full)) continue;

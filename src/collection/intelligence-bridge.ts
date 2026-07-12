@@ -515,7 +515,7 @@ export async function bootstrapCollectionPlatform(
   `);
 
   let h3xaBridge: IntelligenceBridgeResult | null = null;
-  if (opts.sync_h3xa !== false) {
+  if (opts.sync_h3xa === true) {
     h3xaBridge = await bridgeFindingsToH3xa(harvestPool, {
       backfill_graph: true,
       limit: 5000,

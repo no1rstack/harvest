@@ -14,6 +14,9 @@ function hostify(url: string): string {
 
 function loadH3xaUrl(): string | undefined {
   if (process.env.H3XA_DATABASE_URL) return hostify(process.env.H3XA_DATABASE_URL);
+  if (process.env.NODE_ENV === 'production') {
+    return undefined;
+  }
   for (const file of ['.env.h3xa.local', '.env.local']) {
     const full = path.join(process.cwd(), file);
     if (!fs.existsSync(full)) continue;

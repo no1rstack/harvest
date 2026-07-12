@@ -68,9 +68,6 @@ LOCAL_JUD=""
 [[ -f "$ROOT/../judicium/.env.vps" ]] && LOCAL_JUD="$(cat "$ROOT/../judicium/.env.vps")"
 LOCAL_CASCADES=""
 [[ -f "$ROOT/../cascades/deploy/vps/.env.vps" ]] && LOCAL_CASCADES="$(cat "$ROOT/../cascades/deploy/vps/.env.vps")"
-LOCAL_H3XA=""
-[[ -f "$ROOT/../h3xa/.env.api.local" ]] && LOCAL_H3XA="$(cat "$ROOT/../h3xa/.env.api.local")"
-
 HARVEST_DB="$(pick HARVEST_DATABASE_URL "$JUD" "$LOCAL_HARVEST" "$LOCAL_JUD" || true)"
 HARVEST_DB="${HARVEST_DB//@127.0.0.1:5499/@postgres-main:5432}"
 HARVEST_DB="${HARVEST_DB//@127.0.0.1:5432/@postgres-main:5432}"
@@ -81,9 +78,6 @@ KC_HOME="$(pick HARVEST_KEYCLOAK_HOME_URL "$KC" "$LOCAL_HARVEST" || pick KEYCLOA
 KC_BASE="$(pick KEYCLOAK_BASE_URL "$KC" "$LOCAL_HARVEST" || true)"
 COL_TOKEN="$(pick COLLECTION_INTERNAL_TOKEN "$LOCAL_HARVEST" "$LOCAL_JUD" "$LOCAL_CASCADES" || true)"
 CASCADES_PUBLIC="$(pick CASCADES_PUBLIC_URL "$LOCAL_CASCADES" "$LOCAL_JUD" || true)"
-H3XA_DB="$(pick DATABASE_URL "$LOCAL_H3XA" || true)"
-H3XA_DB="${H3XA_DB//@127.0.0.1:5499/@postgres-main:5432}"
-H3XA_DB="${H3XA_DB//@127.0.0.1:5432/@postgres-main:5432}"
 GHCR_USER="$(pick GHCR_USERNAME "$JUD" || echo 'no1rstack')"
 GHCR_PASS="$(pick GHCR_PASSWORD "$JUD" || true)"
 
@@ -103,9 +97,7 @@ trap 'rm -f "$TMP"' EXIT
 cat >"$TMP" <<EOF
 # Harvest — dedicated Infisical project (generated $(date -u +%Y-%m-%dT%H:%M:%SZ))
 HARVEST_DATABASE_URL=$HARVEST_DB
-H3XA_DATABASE_URL=${H3XA_DB:-}
 HARVEST_PG_HOST_REWRITE=0
-H3XA_PG_HOST_REWRITE=0
 
 KEYCLOAK_BASE_URL=${KC_BASE:-https://auth.noirstack.com}
 KEYCLOAK_REALM=gateway

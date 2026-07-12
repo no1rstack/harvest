@@ -218,7 +218,7 @@ export function registerCollectionRoutes(app: Express): void {
       const pool = poolOr503(res);
       if (!pool) return;
       const result = await bootstrapCollectionPlatform(pool, {
-        sync_h3xa: req.body?.sync_h3xa !== false,
+        sync_h3xa: req.body?.sync_h3xa === true,
         run_due: Boolean(req.body?.run_due),
         dry_run: Boolean(req.body?.dryRun || req.body?.dry_run),
         force: Boolean(req.body?.force),

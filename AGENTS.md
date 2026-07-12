@@ -27,8 +27,7 @@ Bootstrap all keys from Judicium/Keycloak sources (one-time):
 
 | Variable | Purpose |
 |----------|---------|
-| `HARVEST_DATABASE_URL` | Postgres (`harvest_user@harvest`) |
-| `H3XA_DATABASE_URL` | Optional STIX bridge |
+| `HARVEST_DATABASE_URL` | Postgres (`harvest_user@harvest`) — only DB URL in production |
 | `COLLECTION_INTERNAL_TOKEN` | Cascades → Harvest step APIs |
 | `CASCADES_API_URL` | Enqueue workflows (`http://cascades:3000` on VPS) |
 | `CASCADES_PUBLIC_URL` | UI links |
