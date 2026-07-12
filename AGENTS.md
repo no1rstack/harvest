@@ -37,6 +37,10 @@ Bootstrap all keys from Judicium/Keycloak sources (one-time):
 
 Deploy reads **only** the Harvest project (no Judicium/Keycloak project merge).
 
+**Architecture Explorer** (`/harvest` → Architecture tab): live table stats, ownership registry, Cascades pipeline, schema-bleed detection, growth tracking. API: `GET /api/data-catalog`.
+
+Human narratives and data lineage live in `src/data-catalog/narratives.ts` — add `TABLE_NARRATIVES` and `DATA_LINEAGE_JOURNEYS` when introducing new tables (foundation for future public data templates).
+
 ## Local dev
 
 ```bash

@@ -6,8 +6,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Radar, RefreshCw, Play, FileText, AlertTriangle, Check, Clock,
-  Database, Crosshair, ListTree, Terminal, LogIn, LogOut, Brain, Settings,
+  Database, Crosshair, ListTree, Terminal, LogIn, LogOut, Brain, Settings, Layers, Rss,
 } from 'lucide-react';
+import { ArchitectureExplorer } from './ArchitectureExplorer';
+import { FeedIntelligenceExplorer } from './FeedIntelligenceExplorer';
 import { cn } from '../types';
 
 interface HarvestAuthState {
@@ -104,7 +106,7 @@ function statusTone(status: string) {
 
 export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) => {
   const [auth, setAuth] = useState<HarvestAuthState | null>(null);
-  const [tab, setTab] = useState<'ops' | 'findings' | 'registry' | 'graph' | 'intelligence' | 'platform'>('findings');
+  const [tab, setTab] = useState<'ops' | 'findings' | 'registry' | 'graph' | 'intelligence' | 'feeds' | 'platform' | 'architecture'>('findings');
   const [data, setData] = useState<HarvestStatus | null>(null);
   const [targetsText, setTargetsText] = useState('');
   const [targetsDirty, setTargetsDirty] = useState(false);
@@ -712,6 +714,17 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
               </button>
               <button
                 type="button"
+                onClick={() => setTab('feeds')}
+                className={cn(
+                  'px-3 py-1 text-[11px]',
+                  tab === 'feeds' ? 'bg-ink/[0.08] text-ink/80' : 'text-ink/40 hover:text-ink/65',
+                )}
+              >
+                <Rss size={12} className="inline mr-1" />
+                Feeds
+              </button>
+              <button
+                type="button"
                 onClick={() => setTab('ops')}
                 className={cn(
                   'px-3 py-1 text-[11px]',
@@ -719,6 +732,17 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 )}
               >
                 Ops
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab('architecture')}
+                className={cn(
+                  'px-3 py-1 text-[11px]',
+                  tab === 'architecture' ? 'bg-ink/[0.08] text-ink/80' : 'text-ink/40 hover:text-ink/65',
+                )}
+              >
+                <Layers size={12} className="inline mr-1" />
+                Architecture
               </button>
               <button
                 type="button"
@@ -1416,6 +1440,18 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 </table>
               </div>
             </div>
+          </section>
+        )}
+
+        {tab === 'feeds' && (
+          <section>
+            <FeedIntelligenceExplorer />
+          </section>
+        )}
+
+        {tab === 'architecture' && (
+          <section>
+            <ArchitectureExplorer />
           </section>
         )}
 

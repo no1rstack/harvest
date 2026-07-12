@@ -27,6 +27,7 @@ import { registerCollectionRoutes } from './src/routes/collectionRoutes.js';
 import { registerIntelligenceRoutes } from './src/routes/intelligenceRoutes.js';
 import { registerPlatformRoutes, bootPlatformScheduler } from './src/routes/platformRoutes.js';
 import { registerFeedsRoutes } from './src/routes/feedsRoutes.js';
+import { registerDataCatalogRoutes } from './src/routes/dataCatalogRoutes.js';
 import { renderMetricsText } from './src/api/metrics.js';
 
 const app = express();
@@ -93,6 +94,11 @@ app.use('/api/', (req, res, next) => {
     const got = String(req.headers['x-collection-token'] || '');
     if (expected && got === expected) return next();
   }
+  if (req.path.startsWith('/api/feeds/community/')) {
+    const expected = process.env.COLLECTION_INTERNAL_TOKEN || '';
+    const got = String(req.headers['x-collection-token'] || '');
+    if (expected && got === expected) return next();
+  }
   const origin = req.headers.origin as string | undefined;
   const referer = req.headers.referer as string | undefined;
   const hostOk = (value: string) =>
@@ -113,6 +119,7 @@ registerCollectionRoutes(app);
 registerIntelligenceRoutes(app);
 registerPlatformRoutes(app);
 registerFeedsRoutes(app);
+registerDataCatalogRoutes(app);
 
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {

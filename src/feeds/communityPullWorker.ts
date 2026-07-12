@@ -12,6 +12,7 @@ import {
 } from './communityStorePg.js';
 import type { CommunityItem } from './communityTypes.js';
 import { inferSourceClass } from './communityTypes.js';
+import { enrichCommunityPayload } from './feedEnrichment.js';
 import { aggregateRssDigest, type DigestNewsItem } from './rssDigest.js';
 import { loadPlatformConfig } from '../platform/config.js';
 
@@ -54,23 +55,26 @@ function stableRssId(title: string, link: string): string {
 }
 
 function newsToCommunityItems(items: DigestNewsItem[]): CommunityItem[] {
-  return items.map((item) => ({
-    id: item.id || stableRssId(item.title, item.link),
-    title: item.title,
-    summary: (item.description || '').slice(0, 800),
-    sourceClass: inferSourceClass('rss', item.source, item.category),
-    sourceName: item.source,
-    sourceUrl: item.link,
-    stream: 'rss',
-    category: item.category || 'News',
-    severity: 'medium' as const,
-    publishedAt: item.publishedAt || new Date().toISOString(),
-    lat: null,
-    lon: null,
-    geoQuality: 'none' as const,
-    location: undefined,
-    originalLink: item.link,
-  }));
+  return items.map((item) => {
+    const base: CommunityItem = {
+      id: item.id || stableRssId(item.title, item.link),
+      title: item.title,
+      summary: (item.description || '').slice(0, 800),
+      sourceClass: inferSourceClass('rss', item.source, item.category),
+      sourceName: item.source,
+      sourceUrl: item.link,
+      stream: 'rss',
+      category: item.category || 'News',
+      severity: 'medium' as const,
+      publishedAt: item.publishedAt || new Date().toISOString(),
+      lat: null,
+      lon: null,
+      geoQuality: 'none' as const,
+      location: undefined,
+      originalLink: item.link,
+    };
+    return { ...base, payload: enrichCommunityPayload(base) };
+  });
 }
 
 function requirePool(): Pool {

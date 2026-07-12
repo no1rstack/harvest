@@ -11,6 +11,7 @@ import type {
   CommunityStreamStatus,
 } from './communityTypes.js';
 import { inferSourceClass } from './communityTypes.js';
+import { enrichCommunityPayload } from './feedEnrichment.js';
 
 export const COMMUNITY_STORE_DDL = `
   CREATE TABLE IF NOT EXISTS community_items (
@@ -141,6 +142,10 @@ export async function upsertCommunityItems(
   for (const raw of items) {
     const item = normalizeCommunityItem(raw);
     if (!item) continue;
+    const enrichment = item.payload?.enrichment as { keywords?: string[] } | undefined;
+    if (!enrichment?.keywords?.length) {
+      item.payload = enrichCommunityPayload(item);
+    }
     stream = item.stream;
     await pool.query(
       `INSERT INTO community_items (
@@ -197,33 +202,149 @@ export async function markStreamError(pool: Pool, stream: string, error: string)
   );
 }
 
-export async function listCommunityItems(
-  pool: Pool,
-  options?: { hours?: number; sourceClass?: string; stream?: string; category?: string; limit?: number },
-): Promise<CommunityItem[]> {
-  await ensureCommunitySchema(pool);
-  const hours = options?.hours ?? 48;
-  const limit = Math.min(options?.limit ?? 300, 1000);
+export interface CommunityQueryOptions {
+  hours?: number;
+  sourceClass?: string;
+  stream?: string;
+  category?: string;
+  severity?: string;
+  q?: string;
+  keyword?: string;
+  entity?: string;
+  needsEnrichment?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+function buildCommunityWhere(options: CommunityQueryOptions): { clauses: string[]; params: unknown[] } {
+  const hours = options.hours ?? 48;
   const clauses = [`published_at >= NOW() - ($1::text || ' hours')::interval`];
   const params: unknown[] = [hours];
-  if (options?.sourceClass) {
+
+  if (options.sourceClass) {
     params.push(options.sourceClass);
     clauses.push(`source_class = $${params.length}`);
   }
-  if (options?.stream) {
+  if (options.stream) {
     params.push(options.stream);
     clauses.push(`stream = $${params.length}`);
   }
-  if (options?.category) {
+  if (options.category) {
     params.push(options.category);
     clauses.push(`category = $${params.length}`);
   }
+  if (options.severity) {
+    params.push(options.severity);
+    clauses.push(`severity = $${params.length}`);
+  }
+  if (options.q) {
+    params.push(`%${options.q.trim()}%`);
+    clauses.push(`(title ILIKE $${params.length} OR summary ILIKE $${params.length})`);
+  }
+  if (options.keyword) {
+    params.push(options.keyword.trim().toLowerCase());
+    clauses.push(`EXISTS (
+      SELECT 1 FROM jsonb_array_elements_text(COALESCE(payload_json->'enrichment'->'keywords', '[]'::jsonb)) kw
+      WHERE kw ILIKE $${params.length}
+    )`);
+  }
+  if (options.entity) {
+    params.push(options.entity.trim().toLowerCase());
+    clauses.push(`EXISTS (
+      SELECT 1 FROM jsonb_array_elements_text(COALESCE(payload_json->'enrichment'->'entities', '[]'::jsonb)) ent
+      WHERE ent ILIKE $${params.length}
+    )`);
+  }
+  if (options.needsEnrichment) {
+    clauses.push(`(
+      payload_json->'enrichment' IS NULL
+      OR payload_json->'enrichment' = 'null'::jsonb
+      OR jsonb_array_length(COALESCE(payload_json->'enrichment'->'keywords', '[]'::jsonb)) = 0
+    )`);
+  }
+
+  return { clauses, params };
+}
+
+export async function getCommunityItemById(pool: Pool, id: string): Promise<CommunityItem | null> {
+  await ensureCommunitySchema(pool);
+  const result = await pool.query('SELECT * FROM community_items WHERE id = $1 LIMIT 1', [id]);
+  return result.rows[0] ? rowToItem(result.rows[0]) : null;
+}
+
+export async function listCommunityItems(
+  pool: Pool,
+  options?: CommunityQueryOptions,
+): Promise<CommunityItem[]> {
+  return searchCommunityItems(pool, options);
+}
+
+export async function searchCommunityItems(
+  pool: Pool,
+  options?: CommunityQueryOptions,
+): Promise<CommunityItem[]> {
+  await ensureCommunitySchema(pool);
+  const limit = Math.min(options?.limit ?? 300, 1000);
+  const offset = Math.max(options?.offset ?? 0, 0);
+  const { clauses, params } = buildCommunityWhere(options || {});
   params.push(limit);
+  params.push(offset);
   const result = await pool.query(
-    `SELECT * FROM community_items WHERE ${clauses.join(' AND ')} ORDER BY published_at DESC LIMIT $${params.length}`,
+    `SELECT * FROM community_items WHERE ${clauses.join(' AND ')}
+     ORDER BY published_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
     params,
   );
   return result.rows.map(rowToItem);
+}
+
+export async function getCommunityFacets(
+  pool: Pool,
+  options?: { hours?: number; stream?: string; limit?: number },
+): Promise<{
+  keywords: Array<{ term: string; count: number }>;
+  entities: Array<{ term: string; count: number }>;
+  categories: Array<{ term: string; count: number }>;
+  streams: Array<{ term: string; count: number }>;
+}> {
+  await ensureCommunitySchema(pool);
+  const hours = options?.hours ?? 48;
+  const limit = options?.limit ?? 30;
+  const streamClause = options?.stream ? 'AND stream = $2' : '';
+  const streamParams = options?.stream ? [hours, options.stream] : [hours];
+
+  const keywords = await pool.query(
+    `SELECT kw AS term, COUNT(*)::int AS count
+     FROM community_items, jsonb_array_elements_text(COALESCE(payload_json->'enrichment'->'keywords', '[]'::jsonb)) kw
+     WHERE published_at >= NOW() - ($1::text || ' hours')::interval ${streamClause}
+     GROUP BY kw ORDER BY count DESC LIMIT $${streamParams.length + 1}`,
+    [...streamParams, limit],
+  );
+  const entities = await pool.query(
+    `SELECT ent AS term, COUNT(*)::int AS count
+     FROM community_items, jsonb_array_elements_text(COALESCE(payload_json->'enrichment'->'entities', '[]'::jsonb)) ent
+     WHERE published_at >= NOW() - ($1::text || ' hours')::interval ${streamClause}
+     GROUP BY ent ORDER BY count DESC LIMIT $${streamParams.length + 1}`,
+    [...streamParams, limit],
+  );
+  const categories = await pool.query(
+    `SELECT category AS term, COUNT(*)::int AS count FROM community_items
+     WHERE published_at >= NOW() - ($1::text || ' hours')::interval ${streamClause}
+     GROUP BY category ORDER BY count DESC LIMIT $${streamParams.length + 1}`,
+    [...streamParams, limit],
+  );
+  const streams = await pool.query(
+    `SELECT stream AS term, COUNT(*)::int AS count FROM community_items
+     WHERE published_at >= NOW() - ($1::text || ' hours')::interval
+     GROUP BY stream ORDER BY count DESC LIMIT $2`,
+    [hours, limit],
+  );
+
+  return {
+    keywords: keywords.rows.map((r) => ({ term: String(r.term), count: Number(r.count) })),
+    entities: entities.rows.map((r) => ({ term: String(r.term), count: Number(r.count) })),
+    categories: categories.rows.map((r) => ({ term: String(r.term), count: Number(r.count) })),
+    streams: streams.rows.map((r) => ({ term: String(r.term), count: Number(r.count) })),
+  };
 }
 
 export async function listStreamStatus(pool: Pool): Promise<CommunityStreamStatus[]> {

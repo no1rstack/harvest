@@ -251,7 +251,7 @@ export function requireHarvestAuth(req: Request, res: Response, next: NextFuncti
   if (req.path === '/api/health') return next();
 
   // Cascades / internal orchestrator (machine token)
-  if (req.path.startsWith('/api/collection/')) {
+  if (req.path.startsWith('/api/collection/') || req.path.startsWith('/api/feeds/community/')) {
     const expected = process.env.COLLECTION_INTERNAL_TOKEN || '';
     const got = String(req.headers['x-collection-token'] || '');
     if (expected && got === expected) return next();

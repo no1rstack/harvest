@@ -7,11 +7,17 @@ import type { Express } from 'express';
 import { getHarvestPool } from '../db/harvestPostgres.js';
 import {
   getCommunityStats,
+  getCommunityFacets,
   listCommunityItems,
   listStreamStatus,
   markStreamError,
   upsertCommunityItems,
 } from '../feeds/communityStorePg.js';
+import {
+  backfillCommunityEnrichment,
+  expandCommunityKeywordsToTargets,
+  enrichCommunityItemById,
+} from '../feeds/communityIntelligence.js';
 import {
   getCommunityPullStatusAsync,
   pullFreeLayers,
@@ -44,11 +50,82 @@ export function registerFeedsRoutes(app: Express): void {
         sourceClass: String(req.query.class || '').trim() || undefined,
         stream: String(req.query.stream || '').trim() || undefined,
         category: String(req.query.category || '').trim() || undefined,
+        severity: String(req.query.severity || '').trim() || undefined,
+        q: String(req.query.q || '').trim() || undefined,
+        keyword: String(req.query.keyword || '').trim() || undefined,
+        entity: String(req.query.entity || '').trim() || undefined,
       });
       const stats = await getCommunityStats(pool, hours);
       res.json({ items, stats, hours, store: 'harvest-postgres' });
     } catch (err: unknown) {
       res.status(500).json({ error: (err as Error).message, items: [] });
+    }
+  });
+
+  app.get(`${base}/facets`, async (req, res) => {
+    try {
+      const pool = poolOr503(res);
+      if (!pool) return;
+      const hours = parseInt(String(req.query.hours || '48'), 10) || 48;
+      const stream = String(req.query.stream || '').trim() || undefined;
+      const facets = await getCommunityFacets(pool, { hours, stream });
+      res.json({ hours, stream: stream || null, facets });
+    } catch (err: unknown) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  app.post(`${base}/enrich`, async (req, res) => {
+    try {
+      const pool = poolOr503(res);
+      if (!pool) return;
+      const itemId = String(req.body?.item_id || req.body?.id || '').trim();
+      if (itemId) {
+        const item = await enrichCommunityItemById(pool, itemId);
+        if (!item) return res.status(404).json({ error: 'item not found' });
+        return res.json({ enriched: 1, item });
+      }
+      const result = await backfillCommunityEnrichment(pool, {
+        hours: parseInt(String(req.body?.hours || '168'), 10) || 168,
+        stream: typeof req.body?.stream === 'string' ? req.body.stream : undefined,
+        limit: Math.min(parseInt(String(req.body?.limit || '500'), 10) || 500, 2000),
+      });
+      res.json(result);
+    } catch (err: unknown) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  app.post(`${base}/expand`, async (req, res) => {
+    try {
+      const pool = poolOr503(res);
+      if (!pool) return;
+      const keywords = Array.isArray(req.body?.keywords)
+        ? req.body.keywords.map((k: unknown) => String(k))
+        : req.body?.keyword
+          ? [String(req.body.keyword)]
+          : undefined;
+      const itemIds = Array.isArray(req.body?.item_ids)
+        ? req.body.item_ids.map((id: unknown) => String(id))
+        : req.body?.item_id
+          ? [String(req.body.item_id)]
+          : undefined;
+      const result = await expandCommunityKeywordsToTargets(pool, {
+        keywords,
+        itemIds,
+        hours: parseInt(String(req.body?.hours || '48'), 10) || 48,
+        stream: typeof req.body?.stream === 'string' ? req.body.stream : undefined,
+        category: typeof req.body?.category === 'string' ? req.body.category : undefined,
+        goal: typeof req.body?.goal === 'string' ? req.body.goal : undefined,
+        expand: req.body?.expand !== false,
+        enqueue: Boolean(req.body?.enqueue),
+        dryRun: Boolean(req.body?.dry_run),
+        maxTargets: Math.min(parseInt(String(req.body?.max_targets || '25'), 10) || 25, 50),
+        product: typeof req.body?.product === 'string' ? req.body.product : 'shared',
+      });
+      res.status(202).json(result);
+    } catch (err: unknown) {
+      res.status(500).json({ error: (err as Error).message });
     }
   });
 
