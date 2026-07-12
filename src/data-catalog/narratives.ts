@@ -83,7 +83,7 @@ export const TABLE_NARRATIVES: Record<string, TableNarrative> = {
     purposeDetail:
       'Parent records grouping artifacts, findings, entities, and knowledge for a single collection effort or campaign.',
     whyItExists:
-      'Analysts and APIs need a handle on "this investigation's data" — collections bundle the subgraph.',
+      "Analysts and APIs need a handle on this investigation's data — collections bundle the subgraph.",
     consumers: ['Intelligence API', 'STIX export', 'Dashboard targets', 'Read models'],
     generatedBy: ['Harvest runs', 'Cascades workflow completion'],
   },
@@ -146,7 +146,7 @@ export const TABLE_NARRATIVES: Record<string, TableNarrative> = {
     purposeDetail:
       'Investigation dossiers — entities, timeline, tasks, and reports — owned by the Judicium workbench, not Harvest collection.',
     whyItExists:
-      'Collection platforms produce intelligence; workbenches organize it into cases. This table belongs to Judicium's investigation model.',
+      "Collection platforms produce intelligence; workbenches organize it into cases. This table belongs to Judicium's investigation model.",
     consumers: ['Judicium dashboard', 'Evidence', 'Reports', 'Graph'],
     generatedBy: ['Judicium analysts'],
   },

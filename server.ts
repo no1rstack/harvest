@@ -89,12 +89,13 @@ app.use('/api/', (err: any, _req: any, res: any, _next: any) => {
 
 app.use('/api/', (req, res, next) => {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
-  if (req.path.startsWith('/api/collection/') || req.path.startsWith('/collection/')) {
+  const apiPath = req.path.startsWith('/api/') ? req.path : `/api${req.path}`;
+  if (apiPath.startsWith('/api/collection/') || apiPath.startsWith('/collection/')) {
     const expected = process.env.COLLECTION_INTERNAL_TOKEN || '';
     const got = String(req.headers['x-collection-token'] || '');
     if (expected && got === expected) return next();
   }
-  if (req.path.startsWith('/api/feeds/community/')) {
+  if (apiPath.startsWith('/api/feeds/community/')) {
     const expected = process.env.COLLECTION_INTERNAL_TOKEN || '';
     const got = String(req.headers['x-collection-token'] || '');
     if (expected && got === expected) return next();
