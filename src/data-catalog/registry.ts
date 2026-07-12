@@ -233,7 +233,7 @@ export const TABLE_REGISTRY: Record<string, TableRegistryEntry> = {
     lifecycle: 'active',
     purpose: 'Community intelligence feed items (sensor, narrative, authority).',
     service: 'harvest',
-    apis: ['/api/feeds/community/items', '/api/feeds/community/facets', '/api/feeds/community/expand', 'judicium:/api/community/items'],
+    apis: ['/api/feeds/community/items', '/api/feeds/community/facets', '/api/feeds/community/expand', '/api/feeds/community/contract', '/api/platform/modules/community-feeds/contract', 'judicium:/api/community/items'],
     canDelete: false,
     canArchive: true,
     canPartition: true,

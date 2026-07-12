@@ -30,6 +30,31 @@ export interface PlatformFeedsConfig {
   startupDelaySeconds: number;
 }
 
+export interface PlatformCommunityFeedsEnrichmentConfig {
+  autoOnIngest: boolean;
+  backfillHours: number;
+  backfillLimit: number;
+}
+
+export interface PlatformCommunityFeedsExpansionConfig {
+  /** Allow POST /expand (keyword → collection_targets) */
+  enabled: boolean;
+  /** Default for expand requests when enqueue omitted */
+  defaultEnqueue: boolean;
+  maxTargetsPerRun: number;
+  cascadesWorkflow: string;
+}
+
+/** Harvest module config — authoritative for Community Feeds ops */
+export interface PlatformCommunityFeedsModuleConfig extends PlatformFeedsConfig {
+  enrichment: PlatformCommunityFeedsEnrichmentConfig;
+  expansion: PlatformCommunityFeedsExpansionConfig;
+}
+
+export interface PlatformModulesConfig {
+  communityFeeds: PlatformCommunityFeedsModuleConfig;
+}
+
 export interface PlatformIntegrationsConfig {
   cascadesApiUrl: string;
   cascadesPublicUrl: string;
@@ -47,7 +72,9 @@ export interface PlatformConfig {
   version: 1;
   updatedAt: string;
   scheduler: PlatformSchedulerConfig;
+  /** @deprecated alias — prefer modules.communityFeeds */
   communityFeeds: PlatformFeedsConfig;
+  modules: PlatformModulesConfig;
   integrations: PlatformIntegrationsConfig;
   judicium: PlatformJudiciumConfig;
 }

@@ -20,11 +20,26 @@ import {
 } from '../feeds/communityIntelligence.js';
 import {
   getCommunityPullStatusAsync,
+  pullFeedSource,
   pullFreeLayers,
   pullRssDigest,
   runCommunityDailyPull,
 } from '../feeds/communityPullWorker.js';
-import { aggregateRssDigest, getRssCategories } from '../feeds/rssDigest.js';
+import { aggregateRssDigest, getCuratedFeedDefinitions, getRssCategories } from '../feeds/rssDigest.js';
+import { discoverFeedsFromUrl } from '../feeds/rssFeedDiscovery.js';
+import {
+  deleteFeedSource,
+  listFeedSources,
+  patchFeedSource,
+  upsertFeedSource,
+} from '../feeds/rssFeedRegistry.js';
+import { loadPlatformConfig } from '../platform/config.js';
+import { resolveCommunityFeedsConfig } from '../modules/community-feeds/config.js';
+import { getCommunityFeedsContract } from '../modules/registry.js';
+
+function moduleConfig() {
+  return resolveCommunityFeedsConfig(loadPlatformConfig());
+}
 
 function poolOr503(res: import('express').Response) {
   const pool = getHarvestPool();
@@ -37,6 +52,15 @@ function poolOr503(res: import('express').Response) {
 
 export function registerFeedsRoutes(app: Express): void {
   const base = '/api/feeds/community';
+
+  app.get(`${base}/contract`, (_req, res) => {
+    const cfg = moduleConfig();
+    res.json({
+      contract: getCommunityFeedsContract(),
+      config: cfg,
+      store: 'harvest-postgres',
+    });
+  });
 
   app.get(`${base}/items`, async (req, res) => {
     try {
@@ -85,10 +109,14 @@ export function registerFeedsRoutes(app: Express): void {
         if (!item) return res.status(404).json({ error: 'item not found' });
         return res.json({ enriched: 1, item });
       }
+      const cfg = moduleConfig();
       const result = await backfillCommunityEnrichment(pool, {
-        hours: parseInt(String(req.body?.hours || '168'), 10) || 168,
+        hours: parseInt(String(req.body?.hours || cfg.enrichment.backfillHours), 10) || cfg.enrichment.backfillHours,
         stream: typeof req.body?.stream === 'string' ? req.body.stream : undefined,
-        limit: Math.min(parseInt(String(req.body?.limit || '500'), 10) || 500, 2000),
+        limit: Math.min(
+          parseInt(String(req.body?.limit || cfg.enrichment.backfillLimit), 10) || cfg.enrichment.backfillLimit,
+          2000,
+        ),
       });
       res.json(result);
     } catch (err: unknown) {
@@ -100,6 +128,13 @@ export function registerFeedsRoutes(app: Express): void {
     try {
       const pool = poolOr503(res);
       if (!pool) return;
+      const cfg = moduleConfig();
+      if (!cfg.expansion.enabled) {
+        return res.status(403).json({
+          error: 'Community feeds expansion disabled in Harvest module config',
+          module: 'community-feeds',
+        });
+      }
       const keywords = Array.isArray(req.body?.keywords)
         ? req.body.keywords.map((k: unknown) => String(k))
         : req.body?.keyword
@@ -118,9 +153,12 @@ export function registerFeedsRoutes(app: Express): void {
         category: typeof req.body?.category === 'string' ? req.body.category : undefined,
         goal: typeof req.body?.goal === 'string' ? req.body.goal : undefined,
         expand: req.body?.expand !== false,
-        enqueue: Boolean(req.body?.enqueue),
+        enqueue: req.body?.enqueue != null ? Boolean(req.body.enqueue) : cfg.expansion.defaultEnqueue,
         dryRun: Boolean(req.body?.dry_run),
-        maxTargets: Math.min(parseInt(String(req.body?.max_targets || '25'), 10) || 25, 50),
+        maxTargets: Math.min(
+          parseInt(String(req.body?.max_targets || cfg.expansion.maxTargetsPerRun), 10) || cfg.expansion.maxTargetsPerRun,
+          50,
+        ),
         product: typeof req.body?.product === 'string' ? req.body.product : 'shared',
       });
       res.status(202).json(result);
@@ -242,6 +280,116 @@ export function registerFeedsRoutes(app: Express): void {
       res.json({ total: links.length, links });
     } catch (err: unknown) {
       res.status(500).json({ error: (err as Error).message, links: [] });
+    }
+  });
+
+  app.get(`${base}/sources`, async (_req, res) => {
+    try {
+      const pool = poolOr503(res);
+      if (!pool) return;
+      const sources = await listFeedSources(pool);
+      res.json({
+        sources,
+        curated: getCuratedFeedDefinitions(),
+        total: sources.length,
+      });
+    } catch (err: unknown) {
+      res.status(500).json({ error: (err as Error).message, sources: [] });
+    }
+  });
+
+  app.post(`${base}/sources/discover`, async (req, res) => {
+    try {
+      const url = String(req.body?.url || req.body?.site_url || '').trim();
+      if (!url) return res.status(400).json({ error: 'url is required' });
+      const discovery = await discoverFeedsFromUrl(url);
+      res.json(discovery);
+    } catch (err: unknown) {
+      res.status(400).json({ error: (err as Error).message, feeds: [] });
+    }
+  });
+
+  app.post(`${base}/sources`, async (req, res) => {
+    try {
+      const pool = poolOr503(res);
+      if (!pool) return;
+      const url = String(req.body?.url || '').trim();
+      let feedUrl = String(req.body?.feed_url || '').trim();
+      let siteUrl = String(req.body?.site_url || '').trim();
+      let name = String(req.body?.name || '').trim();
+      let discoveredVia = String(req.body?.discovered_via || 'manual');
+
+      if (url && !feedUrl) {
+        const discovery = await discoverFeedsFromUrl(url);
+        if (!discovery.feeds.length) {
+          return res.status(404).json({ error: 'No feeds discovered for URL', discovery });
+        }
+        const first = discovery.feeds[0];
+        feedUrl = first.feedUrl;
+        siteUrl = discovery.siteUrl;
+        if (!name) name = first.title || new URL(discovery.siteUrl).hostname;
+        discoveredVia = first.discoveredVia;
+      }
+
+      if (!feedUrl) return res.status(400).json({ error: 'feed_url or url is required' });
+      if (!name) name = new URL(feedUrl).hostname;
+      if (!siteUrl) siteUrl = new URL(feedUrl).origin;
+
+      const source = await upsertFeedSource(pool, {
+        name,
+        siteUrl,
+        feedUrl,
+        category: String(req.body?.category || 'osint'),
+        enabled: req.body?.enabled !== false,
+        autoPull: req.body?.auto_pull !== false,
+        discoveredVia,
+      });
+      res.status(201).json({ source });
+    } catch (err: unknown) {
+      res.status(400).json({ error: (err as Error).message });
+    }
+  });
+
+  app.patch(`${base}/sources/:id`, async (req, res) => {
+    try {
+      const pool = poolOr503(res);
+      if (!pool) return;
+      const source = await patchFeedSource(pool, String(req.params.id), {
+        name: typeof req.body?.name === 'string' ? req.body.name : undefined,
+        category: typeof req.body?.category === 'string' ? req.body.category : undefined,
+        enabled: typeof req.body?.enabled === 'boolean' ? req.body.enabled : undefined,
+        autoPull: typeof req.body?.auto_pull === 'boolean' ? req.body.auto_pull : undefined,
+      });
+      if (!source) return res.status(404).json({ error: 'Source not found' });
+      res.json({ source });
+    } catch (err: unknown) {
+      res.status(400).json({ error: (err as Error).message });
+    }
+  });
+
+  app.delete(`${base}/sources/:id`, async (req, res) => {
+    try {
+      const pool = poolOr503(res);
+      if (!pool) return;
+      const deleted = await deleteFeedSource(pool, String(req.params.id));
+      if (!deleted) return res.status(404).json({ error: 'Source not found' });
+      res.json({ deleted: true });
+    } catch (err: unknown) {
+      res.status(400).json({ error: (err as Error).message });
+    }
+  });
+
+  app.post(`${base}/sources/:id/pull`, async (req, res) => {
+    try {
+      const pool = poolOr503(res);
+      if (!pool) return;
+      const sources = await listFeedSources(pool);
+      const source = sources.find((s) => s.id === String(req.params.id));
+      if (!source) return res.status(404).json({ error: 'Source not found' });
+      const result = await pullFeedSource(source);
+      res.json({ source, result });
+    } catch (err: unknown) {
+      res.status(500).json({ error: (err as Error).message });
     }
   });
 }

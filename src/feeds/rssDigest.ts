@@ -14,7 +14,7 @@ export interface DigestNewsItem {
   publishedAt: string;
 }
 
-type FeedDef = { name: string; url: string; category: string };
+export type FeedDef = { name: string; url: string; category: string };
 
 const FREE_FEEDS: FeedDef[] = [
   { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', category: 'geopolitics' },
@@ -83,11 +83,12 @@ async function fetchRssFeed(url: string, name: string, category: string): Promis
 export async function aggregateRssDigest(
   categories?: string[],
   maxResults = 200,
+  extraFeeds: FeedDef[] = [],
 ): Promise<DigestNewsItem[]> {
   const cats = categories?.length
     ? categories.filter((c) => CATEGORY_SET.has(c))
     : [...CATEGORY_SET];
-  const feeds = FREE_FEEDS.filter((f) => cats.includes(f.category));
+  const feeds = [...FREE_FEEDS, ...extraFeeds].filter((f) => cats.includes(f.category));
 
   const batches = await Promise.allSettled(
     feeds.map((f) => fetchRssFeed(f.url, f.name, f.category)),
@@ -112,4 +113,8 @@ export async function aggregateRssDigest(
 
 export function getRssCategories(): string[] {
   return [...CATEGORY_SET];
+}
+
+export function getCuratedFeedDefinitions(): FeedDef[] {
+  return [...FREE_FEEDS];
 }

@@ -1502,14 +1502,45 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 </div>
               </div>
               <div className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3">
-                <div className="text-[10px] uppercase tracking-wider text-ink/45">Community feeds</div>
+                <div className="text-[10px] uppercase tracking-wider text-ink/45">Module: Community Feeds</div>
+                <div className="text-[10px] text-ink/35 font-mono">community-feeds@1.1.0 · Harvest-owned · Judicium consumes via proxy</div>
                 <label className="flex items-center gap-2 text-[11px] text-ink/60">
-                  <input type="checkbox" checked={Boolean((platformConfig.communityFeeds as Record<string, unknown>)?.enabled)} onChange={(e) => patchPlatform(['communityFeeds', 'enabled'], e.target.checked)} />
+                  <input type="checkbox" checked={Boolean(((platformConfig.modules as Record<string, unknown>)?.communityFeeds as Record<string, unknown>)?.enabled ?? (platformConfig.communityFeeds as Record<string, unknown>)?.enabled)} onChange={(e) => patchPlatform(['modules', 'communityFeeds', 'enabled'], e.target.checked)} />
                   Feeds worker enabled
                 </label>
                 <label className="flex items-center gap-2 text-[11px] text-ink/60">
-                  <input type="checkbox" checked={Boolean((platformConfig.communityFeeds as Record<string, unknown>)?.delegateFromJudicium)} onChange={(e) => patchPlatform(['communityFeeds', 'delegateFromJudicium'], e.target.checked)} />
+                  <input type="checkbox" checked={Boolean(((platformConfig.modules as Record<string, unknown>)?.communityFeeds as Record<string, unknown>)?.delegateFromJudicium ?? (platformConfig.communityFeeds as Record<string, unknown>)?.delegateFromJudicium)} onChange={(e) => patchPlatform(['modules', 'communityFeeds', 'delegateFromJudicium'], e.target.checked)} />
                   Judicium delegates community pull to Harvest
+                </label>
+                <label className="flex items-center gap-2 text-[11px] text-ink/60">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(
+                      (platformConfig.modules as { communityFeeds?: { enrichment?: { autoOnIngest?: boolean } } })?.communityFeeds?.enrichment?.autoOnIngest ?? true,
+                    )}
+                    onChange={(e) => patchPlatform(['modules', 'communityFeeds', 'enrichment', 'autoOnIngest'], e.target.checked)}
+                  />
+                  Enrich keywords on ingest
+                </label>
+                <label className="flex items-center gap-2 text-[11px] text-ink/60">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(
+                      (platformConfig.modules as { communityFeeds?: { expansion?: { enabled?: boolean } } })?.communityFeeds?.expansion?.enabled ?? true,
+                    )}
+                    onChange={(e) => patchPlatform(['modules', 'communityFeeds', 'expansion', 'enabled'], e.target.checked)}
+                  />
+                  Keyword expansion API enabled
+                </label>
+                <label className="flex items-center gap-2 text-[11px] text-ink/60">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(
+                      (platformConfig.modules as { communityFeeds?: { expansion?: { defaultEnqueue?: boolean } } })?.communityFeeds?.expansion?.defaultEnqueue,
+                    )}
+                    onChange={(e) => patchPlatform(['modules', 'communityFeeds', 'expansion', 'defaultEnqueue'], e.target.checked)}
+                  />
+                  Expansion default-enqueues Cascades
                 </label>
                 <div className="flex flex-wrap gap-2 pt-2">
                   {['feeds-layers', 'feeds-rss', 'feeds-daily'].map((kind) => (
@@ -1517,6 +1548,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                       <Play size={10} /> {kind.replace('feeds-', '')}
                     </button>
                   ))}
+                  <a href="/api/platform/modules/community-feeds/contract" target="_blank" rel="noreferrer" className="px-2 py-1 border border-ink/[0.1] text-[10px] text-ink/50 hover:text-ink/75">Contract JSON</a>
                 </div>
               </div>
             </div>

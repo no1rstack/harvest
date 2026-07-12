@@ -1,6 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import type { PlatformConfig } from './types.js';
+import {
+  defaultCommunityFeedsModuleConfig,
+  syncLegacyCommunityFeeds,
+} from '../modules/community-feeds/config.js';
 
 const CONFIG_VERSION = 1 as const;
 const CONFIG_DIR = process.env.HARVEST_PLATFORM_CONFIG_DIR || path.join(process.cwd(), 'data');
@@ -8,6 +12,7 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'platform-config.json');
 
 export function defaultPlatformConfig(): PlatformConfig {
   const now = new Date().toISOString();
+  const communityFeedsModule = defaultCommunityFeedsModuleConfig();
   return {
     version: CONFIG_VERSION,
     updatedAt: now,
@@ -27,13 +32,9 @@ export function defaultPlatformConfig(): PlatformConfig {
         dryRun: process.env.HARVEST_DAILY_PULL_DRY_RUN === '1',
       },
     },
-    communityFeeds: {
-      enabled: process.env.HARVEST_FEEDS_ENABLED !== '0',
-      delegateFromJudicium: process.env.HARVEST_FEEDS_DELEGATE_JUDICIUM !== '0',
-      layersIntervalMinutes: Number(process.env.HARVEST_FEEDS_LAYERS_INTERVAL_MINUTES || 30),
-      rssIntervalMinutes: Number(process.env.HARVEST_FEEDS_RSS_INTERVAL_MINUTES || 60),
-      dailyIntervalHours: Number(process.env.HARVEST_FEEDS_DAILY_INTERVAL_HOURS || 24),
-      startupDelaySeconds: Number(process.env.HARVEST_FEEDS_STARTUP_DELAY_SECONDS || 20),
+    communityFeeds: syncLegacyCommunityFeeds(communityFeedsModule),
+    modules: {
+      communityFeeds: communityFeedsModule,
     },
     integrations: {
       cascadesApiUrl: (process.env.CASCADES_API_URL || 'http://cascades:3000').replace(/\/$/, ''),
@@ -53,6 +54,19 @@ export function defaultPlatformConfig(): PlatformConfig {
 }
 
 function mergeConfig(partial: Partial<PlatformConfig>, base: PlatformConfig): PlatformConfig {
+  const mergedModule = {
+    ...base.modules.communityFeeds,
+    ...(partial.modules?.communityFeeds || {}),
+    ...(partial.communityFeeds || {}),
+    enrichment: {
+      ...base.modules.communityFeeds.enrichment,
+      ...(partial.modules?.communityFeeds?.enrichment || {}),
+    },
+    expansion: {
+      ...base.modules.communityFeeds.expansion,
+      ...(partial.modules?.communityFeeds?.expansion || {}),
+    },
+  };
   return {
     ...base,
     ...partial,
@@ -64,7 +78,10 @@ function mergeConfig(partial: Partial<PlatformConfig>, base: PlatformConfig): Pl
       cascadesDuePull: { ...base.scheduler.cascadesDuePull, ...(partial.scheduler?.cascadesDuePull || {}) },
       dailyPull: { ...base.scheduler.dailyPull, ...(partial.scheduler?.dailyPull || {}) },
     },
-    communityFeeds: { ...base.communityFeeds, ...(partial.communityFeeds || {}) },
+    modules: {
+      communityFeeds: mergedModule,
+    },
+    communityFeeds: syncLegacyCommunityFeeds(mergedModule),
     integrations: { ...base.integrations, ...(partial.integrations || {}) },
     judicium: { ...base.judicium, ...(partial.judicium || {}) },
   };

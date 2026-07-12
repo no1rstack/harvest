@@ -13,7 +13,8 @@ import {
 import type { CommunityItem } from './communityTypes.js';
 import { inferSourceClass } from './communityTypes.js';
 import { enrichCommunityPayload } from './feedEnrichment.js';
-import { aggregateRssDigest, type DigestNewsItem } from './rssDigest.js';
+import { aggregateRssDigest, type DigestNewsItem, type FeedDef } from './rssDigest.js';
+import { listFeedSources, touchFeedSourceHealth, type CommunityFeedSource } from './rssFeedRegistry.js';
 import { loadPlatformConfig } from '../platform/config.js';
 
 const FREE_LAYER_IDS: CommunityLayerId[] = ['disasters', 'aviation', 'cyber'];
@@ -138,7 +139,13 @@ export async function pullRssDigest(options?: {
   try {
     const categories = options?.categories || DAILY_CATEGORIES;
     const maxResults = options?.maxResults ?? 200;
-    const live = await aggregateRssDigest(categories, maxResults);
+    const registryFeeds = await listFeedSources(pool, { enabledOnly: true });
+    const extraFeeds: FeedDef[] = registryFeeds.map((src) => ({
+      name: src.name,
+      url: src.feedUrl,
+      category: src.category,
+    }));
+    const live = await aggregateRssDigest(categories, maxResults, extraFeeds);
     const items = newsToCommunityItems(live);
     const { upserted } = items.length ? await upsertCommunityItems(pool, items, 'rss') : { upserted: 0 };
     return { stream: 'rss', collected: items.length, persisted: upserted, ms: Date.now() - t0 };
@@ -148,6 +155,41 @@ export async function pullRssDigest(options?: {
     return { stream: 'rss', collected: 0, persisted: 0, error: msg, ms: Date.now() - t0 };
   } finally {
     running.rss = false;
+  }
+}
+
+export async function pullFeedSource(source: CommunityFeedSource): Promise<CommunityPullResult> {
+  const pool = requirePool();
+  const t0 = Date.now();
+  try {
+    const live = await aggregateRssDigest([source.category], 80, [{
+      name: source.name,
+      url: source.feedUrl,
+      category: source.category,
+    }]);
+    const ok = live.length > 0;
+    await touchFeedSourceHealth(pool, source.id, {
+      ok,
+      error: ok ? undefined : 'no items returned',
+    });
+    const items = newsToCommunityItems(live);
+    const { upserted } = items.length ? await upsertCommunityItems(pool, items, 'rss') : { upserted: 0 };
+    return {
+      stream: `rss:${source.id}`,
+      collected: items.length,
+      persisted: upserted,
+      ms: Date.now() - t0,
+    };
+  } catch (err: unknown) {
+    const msg = (err as Error)?.message || String(err);
+    await touchFeedSourceHealth(pool, source.id, { ok: false, error: msg });
+    return {
+      stream: `rss:${source.id}`,
+      collected: 0,
+      persisted: 0,
+      error: msg,
+      ms: Date.now() - t0,
+    };
   }
 }
 
@@ -199,7 +241,7 @@ export function getCommunityPullStatus() {
       { id: 'disasters', apis: ['USGS', 'GDACS'], keyRequired: false },
       { id: 'aviation', apis: ['OpenSky'], keyRequired: false },
       { id: 'cyber', apis: ['Feodo', 'URLHaus'], keyRequired: false },
-      { id: 'rss', apis: ['GLOBAL_RSS_FEEDS'], keyRequired: false },
+      { id: 'rss', apis: ['GLOBAL_RSS_FEEDS', 'community_feed_sources'], keyRequired: false },
     ],
     store: 'harvest-postgres',
   };

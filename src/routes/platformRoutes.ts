@@ -57,12 +57,21 @@ export function registerPlatformRoutes(app: Express): void {
         judicium: {
           useHarvestIntelligenceHttp: config.judicium.useHarvestIntelligenceHttp,
           harvestIntelligenceUrl: config.judicium.harvestIntelligenceUrl,
-          communityFeedsDelegate: config.communityFeeds.delegateFromJudicium,
+          communityFeedsDelegate: config.modules.communityFeeds.delegateFromJudicium,
           suggestedEnv: {
             HARVEST_INTELLIGENCE_URL: config.judicium.harvestIntelligenceUrl,
             HARVEST_FEEDS_URL: `${config.integrations.harvestPublicUrl}/api/feeds/community`,
-            COMMUNITY_PULL_DISABLED: config.communityFeeds.delegateFromJudicium ? '1' : '0',
+            HARVEST_FEEDS_ENABLED: config.modules.communityFeeds.enabled ? '1' : '0',
+            COMMUNITY_PULL_DISABLED: config.modules.communityFeeds.delegateFromJudicium ? '1' : '0',
           },
+          contract: {
+            module: 'community-feeds',
+            version: '1.0.0',
+            contractUrl: `${config.integrations.harvestPublicUrl}/api/feeds/community/contract`,
+          },
+        },
+        modules: {
+          communityFeeds: config.modules.communityFeeds,
         },
       });
     } catch (err: unknown) {

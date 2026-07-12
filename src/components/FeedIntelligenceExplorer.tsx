@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshCw, Search, Sparkles, Play, Filter } from 'lucide-react';
+import { RefreshCw, Search, Sparkles, Play, Filter, Rss, Plus, Trash2 } from 'lucide-react';
 import { cn } from '../types';
 
 interface CommunityItem {
@@ -14,6 +14,25 @@ interface CommunityItem {
   payload?: {
     enrichment?: { keywords?: string[]; entities?: string[] };
   };
+}
+
+interface FeedSource {
+  id: string;
+  name: string;
+  siteUrl: string;
+  feedUrl: string;
+  category: string;
+  enabled: boolean;
+  autoPull: boolean;
+  lastOkAt?: string;
+  lastError?: string;
+}
+
+interface DiscoveredFeed {
+  feedUrl: string;
+  feedType: string;
+  title?: string;
+  discoveredVia: string;
 }
 
 interface Facets {
@@ -35,6 +54,10 @@ export function FeedIntelligenceExplorer() {
   const [busy, setBusy] = useState(false);
   const [expandResult, setExpandResult] = useState<string | null>(null);
   const [stats, setStats] = useState<{ total: number } | null>(null);
+  const [sources, setSources] = useState<FeedSource[]>([]);
+  const [discoverUrl, setDiscoverUrl] = useState('');
+  const [discovered, setDiscovered] = useState<DiscoveredFeed[]>([]);
+  const [sourceBusy, setSourceBusy] = useState(false);
 
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
@@ -70,6 +93,89 @@ export function FeedIntelligenceExplorer() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const loadSources = useCallback(async () => {
+    try {
+      const res = await fetch('/api/feeds/community/sources');
+      const json = await res.json();
+      setSources(json.sources || []);
+    } catch (e) {
+      console.warn('feed sources load failed', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSources();
+  }, [loadSources]);
+
+  const discoverFeeds = async () => {
+    if (!discoverUrl.trim()) return;
+    setSourceBusy(true);
+    setDiscovered([]);
+    try {
+      const res = await fetch('/api/feeds/community/sources/discover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: discoverUrl.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Discovery failed');
+      setDiscovered(json.feeds || []);
+    } catch (e) {
+      setExpandResult((e as Error).message);
+    } finally {
+      setSourceBusy(false);
+    }
+  };
+
+  const addDiscoveredFeed = async (feed: DiscoveredFeed) => {
+    setSourceBusy(true);
+    try {
+      const res = await fetch('/api/feeds/community/sources', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          feed_url: feed.feedUrl,
+          site_url: discoverUrl.trim(),
+          name: feed.title || new URL(feed.feedUrl).hostname,
+          category: 'osint',
+          discovered_via: feed.discoveredVia,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Add failed');
+      await loadSources();
+      setExpandResult(`Registered feed: ${json.source?.name || feed.feedUrl}`);
+    } catch (e) {
+      setExpandResult((e as Error).message);
+    } finally {
+      setSourceBusy(false);
+    }
+  };
+
+  const pullSource = async (id: string) => {
+    setSourceBusy(true);
+    try {
+      const res = await fetch(`/api/feeds/community/sources/${id}/pull`, { method: 'POST' });
+      const json = await res.json();
+      setExpandResult(`Pulled ${json.result?.persisted ?? 0} items from ${json.source?.name || id}`);
+      await Promise.all([load(), loadSources()]);
+    } catch (e) {
+      setExpandResult((e as Error).message);
+    } finally {
+      setSourceBusy(false);
+    }
+  };
+
+  const removeSource = async (id: string) => {
+    setSourceBusy(true);
+    try {
+      await fetch(`/api/feeds/community/sources/${id}`, { method: 'DELETE' });
+      await loadSources();
+    } finally {
+      setSourceBusy(false);
+    }
+  };
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -143,7 +249,7 @@ export function FeedIntelligenceExplorer() {
         <div>
           <div className="text-[10px] uppercase tracking-wider text-ink/45">Feed intelligence — slice, extract, expand</div>
           <div className="text-[11px] text-ink/40 mt-0.5">
-            Query RSS & community items, extract keywords, seed Cascades threat-feed collection
+            Harvest module <span className="font-mono text-ink/55">community-feeds@1.1.0</span> — configure in Platform tab
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -253,6 +359,82 @@ export function FeedIntelligenceExplorer() {
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <div className="border border-ink/[0.06] bg-ink/[0.015] p-3 space-y-3">
+        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-ink/40">
+          <Rss size={11} /> RSS sources — discover & auto-pull
+        </div>
+        <div className="text-[10px] text-ink/35">
+          Paste a site or feed URL; Harvest checks direct feeds, HTML link tags, and common paths (feedfinder-style).
+          Registered sources pull on the RSS worker interval. Curated list from{' '}
+          <a href="https://www.en-na.com/#tools" target="_blank" rel="noreferrer" className="text-ink/50 hover:text-ink/70">ENNA</a> can be added the same way.
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <input
+            value={discoverUrl}
+            onChange={(e) => setDiscoverUrl(e.target.value)}
+            placeholder="https://example.com or https://site.com/feed"
+            className="flex-1 min-w-[16rem] bg-[#0a0a0f] border border-ink/[0.08] px-2 py-1 text-[11px]"
+          />
+          <button type="button" disabled={sourceBusy} onClick={() => void discoverFeeds()} className="border border-ink/[0.08] px-2 py-1 text-[10px] text-ink/55 hover:text-ink/75">
+            Discover
+          </button>
+        </div>
+        {discovered.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {discovered.map((feed) => (
+              <button
+                key={feed.feedUrl}
+                type="button"
+                disabled={sourceBusy}
+                onClick={() => void addDiscoveredFeed(feed)}
+                className="flex items-center gap-1 px-2 py-1 border border-ink/[0.08] text-[10px] text-ink/55 hover:text-ink/75"
+              >
+                <Plus size={10} /> {feed.title || feed.feedUrl}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="overflow-auto max-h-48">
+          <table className="w-full text-[10px]">
+            <thead>
+              <tr className="text-ink/40 text-left border-b border-ink/[0.06]">
+                <th className="py-1 pr-2">Name</th>
+                <th className="py-1 pr-2">Category</th>
+                <th className="py-1 pr-2">Status</th>
+                <th className="py-1">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sources.map((src) => (
+                <tr key={src.id} className="border-b border-ink/[0.04] text-ink/60">
+                  <td className="py-1 pr-2">
+                    <div>{src.name}</div>
+                    <div className="text-ink/30 truncate max-w-xs">{src.feedUrl}</div>
+                  </td>
+                  <td className="py-1 pr-2">{src.category}</td>
+                  <td className="py-1 pr-2">
+                    {src.lastError ? (
+                      <span className="text-rose-400/70">{src.lastError}</span>
+                    ) : src.lastOkAt ? (
+                      <span className="text-emerald-400/70">OK</span>
+                    ) : (
+                      <span className="text-ink/30">pending</span>
+                    )}
+                  </td>
+                  <td className="py-1 space-x-2">
+                    <button type="button" disabled={sourceBusy} onClick={() => void pullSource(src.id)} className="text-ink/45 hover:text-ink/70">Pull</button>
+                    <button type="button" disabled={sourceBusy} onClick={() => void removeSource(src.id)} className="text-ink/45 hover:text-rose-400/80"><Trash2 size={10} className="inline" /></button>
+                  </td>
+                </tr>
+              ))}
+              {!sources.length && (
+                <tr><td colSpan={4} className="py-3 text-center text-ink/30">No custom sources — curated feeds still pull automatically</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

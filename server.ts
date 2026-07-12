@@ -28,6 +28,7 @@ import { registerIntelligenceRoutes } from './src/routes/intelligenceRoutes.js';
 import { registerPlatformRoutes, bootPlatformScheduler } from './src/routes/platformRoutes.js';
 import { registerFeedsRoutes } from './src/routes/feedsRoutes.js';
 import { registerDataCatalogRoutes } from './src/routes/dataCatalogRoutes.js';
+import { registerModuleRoutes, communityFeedsContractHeaders } from './src/routes/moduleRoutes.js';
 import { renderMetricsText } from './src/api/metrics.js';
 
 const app = express();
@@ -119,7 +120,9 @@ registerHarvestRoutes(app);
 registerCollectionRoutes(app);
 registerIntelligenceRoutes(app);
 registerPlatformRoutes(app);
+app.use('/api/feeds/community', communityFeedsContractHeaders);
 registerFeedsRoutes(app);
+registerModuleRoutes(app);
 registerDataCatalogRoutes(app);
 
 async function startServer() {
