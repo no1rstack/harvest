@@ -203,6 +203,11 @@ async function exchangeCode(code: string, verifier: string) {
   });
   const tokenJson: any = await tokenRes.json();
   if (!tokenRes.ok || !tokenJson?.access_token) {
+    if (tokenJson?.error === 'unauthorized_client' && !c.clientSecret) {
+      throw new Error(
+        'token exchange failed: KEYCLOAK_CLIENT_SECRET is missing in the Harvest container (redeploy via ./deploy.sh)',
+      );
+    }
     throw new Error(`token exchange failed: ${JSON.stringify(tokenJson)}`);
   }
 
