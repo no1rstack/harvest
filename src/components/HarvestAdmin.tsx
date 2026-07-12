@@ -1503,7 +1503,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
               </div>
               <div className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3">
                 <div className="text-[10px] uppercase tracking-wider text-ink/45">Module: Community Feeds</div>
-                <div className="text-[10px] text-ink/35 font-mono">community-feeds@1.1.0 · Harvest-owned · Judicium consumes via proxy</div>
+                <div className="text-[10px] text-ink/35 font-mono">community-feeds@1.2.0 · Harvest-owned · Judicium consumes via proxy</div>
                 <label className="flex items-center gap-2 text-[11px] text-ink/60">
                   <input type="checkbox" checked={Boolean(((platformConfig.modules as Record<string, unknown>)?.communityFeeds as Record<string, unknown>)?.enabled ?? (platformConfig.communityFeeds as Record<string, unknown>)?.enabled)} onChange={(e) => patchPlatform(['modules', 'communityFeeds', 'enabled'], e.target.checked)} />
                   Feeds worker enabled

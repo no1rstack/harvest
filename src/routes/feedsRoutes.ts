@@ -27,12 +27,12 @@ import {
 } from '../feeds/communityPullWorker.js';
 import { aggregateRssDigest, getCuratedFeedDefinitions, getRssCategories } from '../feeds/rssDigest.js';
 import { discoverFeedsFromUrl } from '../feeds/rssFeedDiscovery.js';
+import { CRUCIX_FEED_SEEDS } from '../feeds/crucixFeedSeeds.js';
 import {
-  deleteFeedSource,
-  listFeedSources,
-  patchFeedSource,
-  upsertFeedSource,
-} from '../feeds/rssFeedRegistry.js';
+  fetchWorldMonitorFeedCatalog,
+  filterWorldMonitorCatalog,
+  worldMonitorFeedToSeed,
+} from '../feeds/worldMonitorFeedCatalog.js';
 import { loadPlatformConfig } from '../platform/config.js';
 import { resolveCommunityFeedsConfig } from '../modules/community-feeds/config.js';
 import { getCommunityFeedsContract } from '../modules/registry.js';
@@ -306,6 +306,93 @@ export function registerFeedsRoutes(app: Express): void {
       res.json(discovery);
     } catch (err: unknown) {
       res.status(400).json({ error: (err as Error).message, feeds: [] });
+    }
+  });
+
+  app.get(`${base}/sources/catalog/worldmonitor`, async (req, res) => {
+    try {
+      const catalog = await fetchWorldMonitorFeedCatalog({
+        refresh: req.query.refresh === '1',
+      });
+      const feeds = filterWorldMonitorCatalog(catalog.feeds, {
+        variant: String(req.query.variant || '').trim() || undefined,
+        wmCategory: String(req.query.wm_category || '').trim() || undefined,
+        harvestCategory: String(req.query.category || '').trim() || undefined,
+        directOnly: req.query.direct_only === '1',
+        q: String(req.query.q || '').trim() || undefined,
+        limit: Math.min(parseInt(String(req.query.limit || '200'), 10) || 200, 500),
+      });
+      res.json({ ...catalog, feeds, filtered: feeds.length });
+    } catch (err: unknown) {
+      res.status(502).json({ error: (err as Error).message, feeds: [] });
+    }
+  });
+
+  app.post(`${base}/sources/import`, async (req, res) => {
+    try {
+      const pool = poolOr503(res);
+      if (!pool) return;
+      const pack = String(req.body?.pack || 'crucix');
+      const limit = Math.min(parseInt(String(req.body?.limit || '50'), 10) || 50, 200);
+      const seeds: Array<{
+        name: string;
+        siteUrl: string;
+        feedUrl: string;
+        category: string;
+        discoveredVia: string;
+      }> = [];
+
+      if (pack === 'crucix') {
+        for (const seed of CRUCIX_FEED_SEEDS.slice(0, limit)) {
+          seeds.push({
+            name: seed.name,
+            siteUrl: seed.siteUrl,
+            feedUrl: seed.feedUrl,
+            category: seed.category,
+            discoveredVia: 'crucix-seed',
+          });
+        }
+      } else if (pack === 'worldmonitor') {
+        const catalog = await fetchWorldMonitorFeedCatalog();
+        const filtered = filterWorldMonitorCatalog(catalog.feeds, {
+          variant: typeof req.body?.variant === 'string' ? req.body.variant : 'full',
+          harvestCategory: typeof req.body?.category === 'string' ? req.body.category : undefined,
+          directOnly: req.body?.direct_only !== false,
+          limit,
+        });
+        for (const feed of filtered) {
+          const s = worldMonitorFeedToSeed(feed);
+          seeds.push({
+            name: s.name,
+            siteUrl: s.siteUrl,
+            feedUrl: s.feedUrl,
+            category: s.category,
+            discoveredVia: s.discoveredVia,
+          });
+        }
+      } else {
+        return res.status(400).json({ error: 'pack must be crucix or worldmonitor' });
+      }
+
+      const registered = [];
+      for (const seed of seeds) {
+        registered.push(await upsertFeedSource(pool, {
+          ...seed,
+          enabled: true,
+          autoPull: true,
+        }));
+      }
+      res.status(201).json({
+        pack,
+        imported: registered.length,
+        sources: registered,
+        worldMonitorNote:
+          pack === 'worldmonitor'
+            ? 'Imported AGPL RSS catalog from koala73/worldmonitor — no paid API key required for feeds.'
+            : undefined,
+      });
+    } catch (err: unknown) {
+      res.status(400).json({ error: (err as Error).message });
     }
   });
 

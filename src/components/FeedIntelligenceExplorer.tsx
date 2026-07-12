@@ -167,6 +167,31 @@ export function FeedIntelligenceExplorer() {
     }
   };
 
+  const importPack = async (pack: 'crucix' | 'worldmonitor') => {
+    setSourceBusy(true);
+    try {
+      const body: Record<string, unknown> = { pack };
+      if (pack === 'worldmonitor') {
+        body.variant = 'full';
+        body.direct_only = true;
+        body.limit = 40;
+      }
+      const res = await fetch('/api/feeds/community/sources/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Import failed');
+      setExpandResult(`Imported ${json.imported ?? 0} feeds from ${pack} pack`);
+      await loadSources();
+    } catch (e) {
+      setExpandResult((e as Error).message);
+    } finally {
+      setSourceBusy(false);
+    }
+  };
+
   const removeSource = async (id: string) => {
     setSourceBusy(true);
     try {
@@ -249,7 +274,7 @@ export function FeedIntelligenceExplorer() {
         <div>
           <div className="text-[10px] uppercase tracking-wider text-ink/45">Feed intelligence — slice, extract, expand</div>
           <div className="text-[11px] text-ink/40 mt-0.5">
-            Harvest module <span className="font-mono text-ink/55">community-feeds@1.1.0</span> — configure in Platform tab
+            Harvest module <span className="font-mono text-ink/55">community-feeds@1.2.0</span> — configure in Platform tab
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -367,9 +392,20 @@ export function FeedIntelligenceExplorer() {
           <Rss size={11} /> RSS sources — discover & auto-pull
         </div>
         <div className="text-[10px] text-ink/35">
-          Paste a site or feed URL; Harvest checks direct feeds, HTML link tags, and common paths (feedfinder-style).
-          Registered sources pull on the RSS worker interval. Curated list from{' '}
-          <a href="https://www.en-na.com/#tools" target="_blank" rel="noreferrer" className="text-ink/50 hover:text-ink/70">ENNA</a> can be added the same way.
+          Paste a site or feed URL; Harvest checks direct feeds, HTML link tags, and common paths.
+          <span className="block mt-1">
+            <strong className="text-ink/45">Crucix-style</strong> seeds (SBS, Indian Express, MercoPress, Al Jazeera) and the free{' '}
+            <a href="https://www.worldmonitor.app/docs/data-sources" target="_blank" rel="noreferrer" className="text-ink/50 hover:text-ink/70">World Monitor AGPL RSS catalog</a>{' '}
+            (no Pro API key — paid API is only for aggregated signals/MCP).
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" disabled={sourceBusy} onClick={() => void importPack('crucix')} className="border border-ink/[0.08] px-2 py-1 text-[10px] text-ink/55 hover:text-ink/75">
+            Import Crucix pack
+          </button>
+          <button type="button" disabled={sourceBusy} onClick={() => void importPack('worldmonitor')} className="border border-ink/[0.08] px-2 py-1 text-[10px] text-ink/55 hover:text-ink/75">
+            Import World Monitor RSS (direct)
+          </button>
         </div>
         <div className="flex flex-wrap gap-2">
           <input

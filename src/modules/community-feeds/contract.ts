@@ -1,6 +1,6 @@
 import type { HarvestModuleContract } from '../types.js';
 
-export const COMMUNITY_FEEDS_CONTRACT_VERSION = '1.1.0';
+export const COMMUNITY_FEEDS_CONTRACT_VERSION = '1.2.0';
 
 export const COMMUNITY_FEEDS_MODULE_ID = 'community-feeds' as const;
 
@@ -40,6 +40,9 @@ export const communityFeedsContract: HarvestModuleContract = {
         { method: 'GET', path: '/sources', judiciumProxyPath: '/api/community/sources', auth: 'session', description: 'List registered RSS/Atom feed sources' },
         { method: 'POST', path: '/sources/discover', judiciumProxyPath: '/api/community/sources/discover', auth: 'session', description: 'Discover feeds from a site or feed URL' },
         { method: 'POST', path: '/sources', judiciumProxyPath: '/api/community/sources', auth: 'session', description: 'Register a feed source for automatic pull' },
+        { method: 'POST', path: '/sources', judiciumProxyPath: '/api/community/sources', auth: 'session', description: 'Register a feed source for automatic pull' },
+        { method: 'POST', path: '/sources/import', judiciumProxyPath: '/api/community/sources/import', auth: 'session', description: 'Bulk-import Crucix seeds or World Monitor AGPL RSS catalog' },
+        { method: 'GET', path: '/sources/catalog/worldmonitor', judiciumProxyPath: '/api/community/sources/catalog/worldmonitor', auth: 'session', description: 'Browse World Monitor open-source RSS catalog (_feeds.ts)' },
         { method: 'PATCH', path: '/sources/:id', judiciumProxyPath: '/api/community/sources/:id', auth: 'session', description: 'Update feed source (enable, category, auto-pull)' },
         { method: 'DELETE', path: '/sources/:id', judiciumProxyPath: '/api/community/sources/:id', auth: 'session', description: 'Remove a registered feed source' },
         { method: 'POST', path: '/sources/:id/pull', judiciumProxyPath: '/api/community/sources/:id/pull', auth: 'collection-token', description: 'Pull one registered feed immediately' },
