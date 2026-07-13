@@ -98,7 +98,17 @@ export const rssHarvester: Harvester = {
             description: summary.slice(0, 500),
             confidence: 0.65,
             tags: ['rss', 'intel', feed.id],
-            raw: { feed: feed.name, url: link, title, summary },
+            related: link
+              ? [{ type: 'url', value: link, relation: 'from_source' }]
+              : undefined,
+            raw: {
+              feed: feed.name,
+              feedId: feed.id,
+              feedUrl: feed.url,
+              url: link,
+              title,
+              summary,
+            },
             observedAt: published ? new Date(published).toISOString() : undefined,
           });
         }

@@ -12,7 +12,8 @@ export type DependencyRelation =
   | 'belongs_to'
   | 'owned_by'
   | 'hosts'
-  | 'issues';
+  | 'issues'
+  | 'from_source';
 
 export interface TargetDependencyRule {
   id: string;

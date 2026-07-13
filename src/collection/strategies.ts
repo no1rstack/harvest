@@ -201,6 +201,24 @@ export const COLLECTION_STRATEGIES: Record<string, CollectionStrategyDefinition>
     enabled: true,
     description: 'Historical document intelligence.',
   },
+  'source-exhaustion-standard': {
+    id: 'source-exhaustion-standard',
+    name: 'Source Exhaustion — Standard',
+    workflow_template: 'threat-feed',
+    profile: 'standard',
+    policy: 'threat-feed-15m',
+    priority: 65,
+    auto_discover: true,
+    enabled: true,
+    description:
+      'Exhaust a provenance source (feed, platform, connector, URL): pull more from the same source under the campaign budget.',
+    stopping_conditions: {
+      max_depth: 4,
+      max_targets: 200,
+      stop_on_no_new_discoveries: true,
+      budget_ms: 600_000,
+    },
+  },
 };
 
 export function listCollectionStrategies(): CollectionStrategyDefinition[] {

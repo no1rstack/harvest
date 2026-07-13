@@ -203,6 +203,9 @@ function parseHoleheStdout(stdout: string, email: string): HarvestFinding[] {
       related: [
         { type: 'username', value: email.split('@')[0], relation: 'discovers' },
         { type: 'person', value: email.split('@')[0], relation: 'discovers' },
+        ...(site.includes('.')
+          ? [{ type: 'domain', value: site.replace(/^https?:\/\//i, '').split('/')[0], relation: 'from_source' }]
+          : []),
       ],
       raw: { site, email },
     });

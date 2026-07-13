@@ -35,7 +35,15 @@ export async function submitTargetToCascades(
   const exec = strategyExecutionContext(strategy);
   const workflowTemplate = normalizeWorkflowId(target.workflow_template || exec.workflow_template);
   const cascadesId = cascadesWorkflowId(workflowTemplate);
-  const collectors = resolveProfileCollectors(workflowTemplate, exec.profile);
+  const profileCollectors = resolveProfileCollectors(workflowTemplate, exec.profile);
+  const metaCollectors = Array.isArray(target.metadata?.collectors)
+    ? (target.metadata.collectors as unknown[]).filter((c): c is string => typeof c === 'string' && c.trim())
+    : [];
+  const collectors = metaCollectors.length > 0 ? metaCollectors : profileCollectors;
+
+  const seedTarget =
+    (typeof target.metadata?.seed_target === 'string' && target.metadata.seed_target.trim()) ||
+    target.value;
   const dayKey = new Date().toISOString().slice(0, 10);
   const idempotencyKey = opts.force
     ? `collect-${target.id}-${Date.now()}`
@@ -45,13 +53,15 @@ export async function submitTargetToCascades(
     event_type: 'collection.requested',
     target_id: target.id,
     payload: {
-      target_value: target.value,
+      target_value: seedTarget,
+      registry_value: target.value,
       workflow_template: workflowTemplate,
       collection_strategy: strategy.id,
       collection_profile: exec.profile,
       collection_policy: exec.policy,
       capabilities: exec.capabilities,
       collectors,
+      exhaust_source: Boolean(target.metadata?.exhaust_source),
       dry_run: Boolean(opts.dryRun),
     },
   });
@@ -62,7 +72,8 @@ export async function submitTargetToCascades(
       {
         targetId: target.id,
         target_id: target.id,
-        target: target.value,
+        target: seedTarget,
+        domain: seedTarget,
         product: target.product,
         workflow_template: workflowTemplate,
         collection_strategy: strategy.id,
@@ -70,6 +81,8 @@ export async function submitTargetToCascades(
         collection_policy: exec.policy,
         capabilities: exec.capabilities,
         collectors,
+        exhaust_source: Boolean(target.metadata?.exhaust_source),
+        provenance_source: target.metadata?.provenance_source,
       },
       {
         idempotencyKey,

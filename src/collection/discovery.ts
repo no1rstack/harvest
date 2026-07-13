@@ -28,11 +28,12 @@ export async function ensureDependencySchema(pool: Pool): Promise<void> {
   await pool.query(TARGET_DEPENDENCIES_SQL);
 }
 
-function relationFromEdge(relation: string): 'discovers' | 'resolves_to' | 'belongs_to' | 'owned_by' {
+function relationFromEdge(relation: string): 'discovers' | 'resolves_to' | 'belongs_to' | 'owned_by' | 'from_source' {
   const r = relation.toLowerCase();
   if (r.includes('resolve') || r.includes('points')) return 'resolves_to';
   if (r.includes('belong') || r.includes('member')) return 'belongs_to';
   if (r.includes('own') || r.includes('registrant')) return 'owned_by';
+  if (r === 'from_source' || r.startsWith('from_source')) return 'from_source';
   return 'discovers';
 }
 
@@ -190,8 +191,16 @@ export async function discoverFromObservations(
   parent: CollectionTarget,
   observations: CollectionObservation[],
   opts: { workflowRunId?: string; dryRun?: boolean } = {},
-): Promise<{ discovered: number; skipped: number }> {
+): Promise<{ discovered: number; skipped: number; sources_exhausted?: number }> {
   const candidates = extractDiscoveryCandidates(observations);
   const result = await runDiscoveryForTarget(pool, parent, candidates, opts);
-  return { discovered: result.discovered, skipped: result.skipped };
+
+  const { exhaustSourcesFromObservations } = await import('./source-exhaustion.js');
+  const sources = await exhaustSourcesFromObservations(pool, parent, observations, opts);
+
+  return {
+    discovered: result.discovered + sources.exhausted,
+    skipped: result.skipped + sources.skipped,
+    sources_exhausted: sources.exhausted,
+  };
 }
