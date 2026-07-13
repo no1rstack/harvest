@@ -3,6 +3,8 @@
  * Replaces flat per-target frequency with intelligent, template-aware cadence.
  */
 
+import { normalizeWorkflowId } from './workflow-catalog.js';
+
 export type CollectionScheduleMode =
   | 'interval'
   | 'cron'
@@ -113,6 +115,33 @@ export const COLLECTION_POLICIES: Record<string, CollectionPolicyDefinition> = {
     default_profile: 'standard',
     description: 'Incremental OpenCTI knowledge sync.',
   },
+  'osint-investigation-15m': {
+    id: 'osint-investigation-15m',
+    name: 'OSINT Investigation — 15 minutes',
+    workflow_template: 'osint-investigation',
+    schedule_mode: 'interval',
+    schedule_value: '15m',
+    default_profile: 'deep',
+    description: 'High-frequency OSINT re-collect while a campaign window is open.',
+  },
+  'osint-investigation-hourly': {
+    id: 'osint-investigation-hourly',
+    name: 'OSINT Investigation — Hourly',
+    workflow_template: 'osint-investigation',
+    schedule_mode: 'interval',
+    schedule_value: 'hourly',
+    default_profile: 'deep',
+    description: 'Hourly OSINT investigation refresh.',
+  },
+  'osint-investigation-daily': {
+    id: 'osint-investigation-daily',
+    name: 'OSINT Investigation — Daily',
+    workflow_template: 'osint-investigation',
+    schedule_mode: 'interval',
+    schedule_value: 'daily',
+    default_profile: 'deep',
+    description: 'Daily OSINT investigation refresh.',
+  },
 };
 
 const INTERVAL_MS: Record<string, number> = {
@@ -132,11 +161,25 @@ export function getCollectionPolicy(id: string): CollectionPolicyDefinition | un
   return COLLECTION_POLICIES[id];
 }
 
-import { normalizeWorkflowId } from './workflow-catalog.js';
+/** Map Cascades UI interval labels → collection policy ids for a workflow. */
+export function policyForInterval(workflowTemplate: string, interval: string): string {
+  const wf = normalizeWorkflowId(workflowTemplate);
+  if (wf === 'osint-investigation') {
+    if (interval === '15m') return 'osint-investigation-15m';
+    if (interval === 'hourly' || interval === '6h') return 'osint-investigation-hourly';
+    return 'osint-investigation-daily';
+  }
+  if (interval === '15m') return 'threat-feed-15m';
+  if (interval === 'hourly') return 'passive-domain-hourly';
+  if (interval === '6h') return 'certificate-6h';
+  if (interval === 'weekly') return 'organization-weekly';
+  return 'passive-domain-daily';
+}
 
 /** Default policy for a workflow template when target has no explicit policy. */
 export function defaultPolicyForTemplate(workflowTemplate: string): CollectionPolicyDefinition {
   const wf = normalizeWorkflowId(workflowTemplate);
+  if (wf === 'osint-investigation') return COLLECTION_POLICIES['osint-investigation-daily'];
   const match = Object.values(COLLECTION_POLICIES).find(
     (p) => normalizeWorkflowId(p.workflow_template) === wf,
   );

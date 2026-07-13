@@ -73,7 +73,7 @@ export const WORKFLOW_CATALOG: Record<string, WorkflowCatalogEntry> = {
       identity_footprint: ['holehe', 'sherlock', 'maigret'],
     },
     default_profile: 'deep',
-    default_policy: 'passive-domain-daily',
+    default_policy: 'osint-investigation-daily',
     default_strategy: 'osint-investigation-standard',
     cascades_workflow_id: 'osint-investigation',
     maturity_level: 3,

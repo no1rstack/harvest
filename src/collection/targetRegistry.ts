@@ -331,6 +331,7 @@ export async function listDueTargets(
   const params: unknown[] = [TIME_SCHEDULED_POLICY_IDS];
   let where = `enabled = TRUE
     AND (next_collect_at IS NULL OR next_collect_at <= NOW())
+    AND (expires_at IS NULL OR expires_at > NOW())
     AND COALESCE(collection_policy, 'passive-domain-daily') = ANY($1::text[])
     AND frequency NOT IN ('manual')`;
 
