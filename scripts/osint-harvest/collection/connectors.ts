@@ -9,6 +9,7 @@ import { waybackHarvester } from '../harvesters/wayback.js';
 import { hackertargetHarvester } from '../harvesters/hackertarget.js';
 import { urlhausHarvester } from '../harvesters/urlhaus.js';
 import { rssHarvester } from '../harvesters/rss.js';
+import { holeheHarvester, sherlockHarvester, maigretHarvester } from '../harvesters/identity-cli.js';
 import type { Harvester, HarvestFinding } from '../types.js';
 import type { CollectionTarget } from '../../../src/collection/types.js';
 import { CONNECTOR_VERSION } from '../../../src/collection/executionContext.js';
@@ -21,6 +22,9 @@ const ALL_HARVESTERS: Harvester[] = [
   hackertargetHarvester,
   urlhausHarvester,
   rssHarvester,
+  holeheHarvester,
+  sherlockHarvester,
+  maigretHarvester,
 ];
 
 export const HARVESTER_MAP = new Map(ALL_HARVESTERS.map((h) => [h.id, h]));

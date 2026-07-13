@@ -96,7 +96,18 @@ interface HarvestStatus {
   job?: { running: boolean; startedAt?: string; lastExit?: number | null; lastLog?: string };
 }
 
-const HARVESTERS = ['crtsh', 'dns', 'rdap', 'hackertarget', 'urlhaus', 'rss', 'wayback'] as const;
+const HARVESTERS = [
+  'crtsh',
+  'dns',
+  'rdap',
+  'hackertarget',
+  'urlhaus',
+  'rss',
+  'wayback',
+  'holehe',
+  'sherlock',
+  'maigret',
+] as const;
 
 function statusTone(status: string) {
   if (status === 'completed') return 'text-emerald-400/70 bg-emerald-400/[0.06]';

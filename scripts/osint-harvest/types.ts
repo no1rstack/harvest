@@ -8,6 +8,7 @@ export type HarvestEntityType =
   | 'subdomain'
   | 'ip'
   | 'email'
+  | 'username'
   | 'url'
   | 'person'
   | 'organization'

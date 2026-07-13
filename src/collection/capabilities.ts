@@ -46,7 +46,7 @@ export const CAPABILITY_CONNECTORS: Record<CollectionCapability, readonly string
   certificate_transparency: ['crtsh', 'certificate'],
   historical_presence: ['wayback'],
   threat_intelligence: ['urlhaus', 'rss', 'hackertarget'],
-  identity_footprint: ['github', 'rss'],
+  identity_footprint: ['holehe', 'sherlock', 'maigret', 'github', 'rss'],
   org_structure: ['whois', 'rdap', 'rss'],
   infrastructure_topology: ['asn', 'dns', 'whois'],
   malware_intel: ['urlhaus', 'hackertarget'],

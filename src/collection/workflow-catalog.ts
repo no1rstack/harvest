@@ -43,9 +43,41 @@ export const WORKFLOW_ALIASES: Record<string, string> = {
   'rss-stream': 'threat-feed',
   'misp-sync': 'threat-feed',
   'opencti-sync': 'threat-feed',
+  'osint-investigation': 'osint-investigation',
 };
 
 export const WORKFLOW_CATALOG: Record<string, WorkflowCatalogEntry> = {
+  'osint-investigation': {
+    id: 'osint-investigation',
+    name: 'OSINT Investigation',
+    description:
+      'ENNA 7-step methodology via Cascades: scope, identity (Holehe/Sherlock/Maigret), passive domain recon, correlate, report. Each finding can fan out as a child Collection.',
+    category: 'infrastructure',
+    target_types: ['domain', 'subdomain', 'hostname', 'metadata', 'email', 'username', 'person'],
+    capabilities: [
+      'internet_presence',
+      'passive_infrastructure',
+      'certificate_transparency',
+      'historical_presence',
+      'threat_intelligence',
+      'dns_resolution',
+      'identity_footprint',
+    ],
+    capability_connectors: {
+      internet_presence: ['dns', 'rdap', 'crtsh'],
+      passive_infrastructure: ['dns', 'rdap', 'crtsh', 'wayback', 'hackertarget'],
+      certificate_transparency: ['crtsh'],
+      historical_presence: ['wayback'],
+      threat_intelligence: ['urlhaus', 'hackertarget'],
+      dns_resolution: ['dns'],
+      identity_footprint: ['holehe', 'sherlock', 'maigret'],
+    },
+    default_profile: 'deep',
+    default_policy: 'passive-domain-daily',
+    default_strategy: 'osint-investigation-standard',
+    cascades_workflow_id: 'osint-investigation',
+    maturity_level: 3,
+  },
   'passive-domain': {
     id: 'passive-domain',
     name: 'Passive Domain',
@@ -97,19 +129,19 @@ export const WORKFLOW_CATALOG: Record<string, WorkflowCatalogEntry> = {
   identity: {
     id: 'identity',
     name: 'Identity',
-    description: 'Username, email, and social footprint collection.',
+    description: 'Username, email, and social footprint — ENNA Holehe/Sherlock/Maigret via Cascades.',
     category: 'identity',
-    target_types: ['username', 'email', 'phone', 'person', 'repository', 'github_org'],
+    target_types: ['username', 'email', 'phone', 'person', 'repository', 'github_org', 'metadata'],
     capabilities: ['identity_footprint', 'internet_presence'],
     capability_connectors: {
-      identity_footprint: ['github', 'rss'],
+      identity_footprint: ['holehe', 'sherlock', 'maigret'],
       internet_presence: ['rdap'],
     },
     default_profile: 'standard',
     default_policy: 'social-identity-monthly',
-    default_strategy: 'identity-standard',
-    cascades_workflow_id: 'passive-domain-collection',
-    maturity_level: 2,
+    default_strategy: 'identity-deep',
+    cascades_workflow_id: 'osint-investigation',
+    maturity_level: 3,
   },
   organization: {
     id: 'organization',

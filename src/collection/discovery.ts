@@ -159,6 +159,25 @@ export async function runDiscoveryForTarget(
       },
     });
 
+    // Immediately enqueue child Collection runs (word→universe automation).
+    // Disable with COLLECTION_DISCOVERY_ENQUEUE=0
+    const enqueue =
+      process.env.COLLECTION_DISCOVERY_ENQUEUE !== '0' &&
+      process.env.COLLECTION_DISCOVERY_ENQUEUE !== 'false';
+    if (enqueue) {
+      try {
+        const { submitTargetToCascades } = await import('./submitDue.js');
+        await submitTargetToCascades(pool, child, {
+          actor: 'discovery',
+          force: true,
+        });
+      } catch (err) {
+        console.warn(
+          `[discovery] enqueue failed for ${child.id}: ${(err as Error).message}`,
+        );
+      }
+    }
+
     discovered++;
     targetIds.push(child.id);
   }
