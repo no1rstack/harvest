@@ -1,7 +1,9 @@
 /**
  * Feed enrichment — entities, keywords, and classification for community/RSS items.
- * Lightweight port of Judicium feedPersistence normalization (no external geo DB).
+ * Rule-based baseline + optional LLM structured enrich (OpenAI-compatible / Ollama).
  */
+
+import { harvestStructuredEnrich, isHarvestLlmEnrichEnabled } from '../lib/llmClient.js';
 
 export interface FeedEnrichment {
   keywords: string[];
@@ -10,6 +12,12 @@ export interface FeedEnrichment {
   word_count: number;
   enriched_at: string;
   source: 'rss' | 'layer' | 'ingest' | 'backfill';
+  llm?: {
+    model: string;
+    category?: string;
+    summary?: string;
+    ok: boolean;
+  };
 }
 
 const STOP_WORDS = new Set([
@@ -91,6 +99,16 @@ export function refineCategory(title: string, text: string, feedCategory: string
   return feedCategory || 'news';
 }
 
+function mergeUnique(a: string[], b: string[], max: number): string[] {
+  const out: string[] = [];
+  for (const x of [...a, ...b]) {
+    const v = String(x || '').toLowerCase().trim();
+    if (v && !out.includes(v)) out.push(v);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 export function buildFeedEnrichment(
   title: string,
   summary: string,
@@ -110,6 +128,7 @@ export function buildFeedEnrichment(
   };
 }
 
+/** Sync rule-based enrich (always available). */
 export function enrichCommunityPayload(
   item: { title: string; summary?: string; category?: string; stream?: string; payload?: Record<string, unknown> },
 ): Record<string, unknown> {
@@ -123,5 +142,42 @@ export function enrichCommunityPayload(
     ...(item.payload || {}),
     enrichment,
     refined_category: category !== (item.category || 'News') ? category : undefined,
+  };
+}
+
+/**
+ * Rule-based enrich + optional LLM structured merge (entities/keywords/category).
+ * Falls back silently when the model is unavailable.
+ */
+export async function enrichCommunityPayloadAsync(
+  item: { title: string; summary?: string; category?: string; stream?: string; payload?: Record<string, unknown> },
+): Promise<Record<string, unknown>> {
+  const base = enrichCommunityPayload(item);
+  if (!isHarvestLlmEnrichEnabled()) return base;
+
+  const llm = await harvestStructuredEnrich({
+    title: item.title,
+    summary: item.summary || '',
+    categoryHint: String(base.refined_category || item.category || 'news'),
+  });
+  if (!llm?.ok) return base;
+
+  const enrichment = { ...(base.enrichment as FeedEnrichment) };
+  enrichment.entities = mergeUnique(llm.entities, enrichment.entities || [], 20);
+  enrichment.keywords = mergeUnique(llm.keywords, enrichment.keywords || [], 12);
+  enrichment.entity_count = enrichment.entities.length;
+  enrichment.llm = {
+    model: llm.model,
+    category: llm.category,
+    summary: llm.summary,
+    ok: true,
+  };
+  enrichment.enriched_at = new Date().toISOString();
+
+  return {
+    ...base,
+    enrichment,
+    refined_category: llm.category || base.refined_category,
+    llm_summary: llm.summary,
   };
 }

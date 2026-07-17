@@ -6,7 +6,7 @@ import type { Pool } from 'pg';
 import { ensureCollectionSchema, upsertTarget } from '../collection/targetRegistry.js';
 import { submitTargetIdToCascades } from '../collection/submitDue.js';
 import type { CollectionTarget } from '../collection/types.js';
-import { buildFeedEnrichment, enrichCommunityPayload } from './feedEnrichment.js';
+import { buildFeedEnrichment, enrichCommunityPayload, enrichCommunityPayloadAsync } from './feedEnrichment.js';
 import { expandKeywordsForCollection, goalFromCategory } from './keywordExpansion.js';
 import {
   getCommunityItemById,
@@ -160,7 +160,7 @@ export async function expandCommunityKeywordsToTargets(
 export async function enrichCommunityItemById(pool: Pool, id: string): Promise<CommunityItem | null> {
   const item = await getCommunityItemById(pool, id);
   if (!item) return null;
-  const payload = enrichCommunityPayload(item);
+  const payload = await enrichCommunityPayloadAsync(item);
   await upsertCommunityItems(pool, [{ ...item, payload }], item.stream);
   return { ...item, payload };
 }
@@ -177,7 +177,7 @@ export async function backfillCommunityEnrichment(
   });
   let enriched = 0;
   for (const item of items) {
-    const payload = enrichCommunityPayload(item);
+    const payload = await enrichCommunityPayloadAsync(item);
     await upsertCommunityItems(pool, [{ ...item, payload }], item.stream);
     enriched++;
   }
@@ -191,4 +191,4 @@ export function sliceCommunityItems(
   return searchCommunityItems(pool, options);
 }
 
-export { buildFeedEnrichment, enrichCommunityPayload };
+export { buildFeedEnrichment, enrichCommunityPayload, enrichCommunityPayloadAsync };

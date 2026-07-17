@@ -11,7 +11,7 @@ import type {
   CommunityStreamStatus,
 } from './communityTypes.js';
 import { inferSourceClass } from './communityTypes.js';
-import { enrichCommunityPayload } from './feedEnrichment.js';
+import { enrichCommunityPayloadAsync } from './feedEnrichment.js';
 
 export const COMMUNITY_STORE_DDL = `
   CREATE TABLE IF NOT EXISTS community_items (
@@ -144,7 +144,7 @@ export async function upsertCommunityItems(
     if (!item) continue;
     const enrichment = item.payload?.enrichment as { keywords?: string[] } | undefined;
     if (!enrichment?.keywords?.length) {
-      item.payload = enrichCommunityPayload(item);
+      item.payload = await enrichCommunityPayloadAsync(item);
     }
     stream = item.stream;
     await pool.query(

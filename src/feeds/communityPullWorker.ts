@@ -12,22 +12,24 @@ import {
 } from './communityStorePg.js';
 import type { CommunityItem } from './communityTypes.js';
 import { inferSourceClass } from './communityTypes.js';
-import { enrichCommunityPayload } from './feedEnrichment.js';
+import { enrichCommunityPayload, enrichCommunityPayloadAsync } from './feedEnrichment.js';
+import { harvestLlmEnrichLimit, mapPool } from '../lib/llmClient.js';
 import { aggregateRssDigest, type DigestNewsItem, type FeedDef } from './rssDigest.js';
 import { listFeedSources, touchFeedSourceHealth, type CommunityFeedSource } from './rssFeedRegistry.js';
 import { loadPlatformConfig } from '../platform/config.js';
+import { fetchAiidCorpus, fetchAptnotesCorpus } from './sharedCorpusPull.js';
 
 const FREE_LAYER_IDS: CommunityLayerId[] = ['disasters', 'aviation', 'cyber'];
 
 const DAILY_CATEGORIES = [
   'geopolitics', 'disaster', 'cyber', 'defense', 'osint', 'sanctions',
-  'maritime', 'aviation', 'finance', 'energy',
+  'maritime', 'aviation', 'finance', 'energy', 'legislation',
 ];
 
 let poolRef: Pool | null = null;
 let started = false;
 let timers: ReturnType<typeof setInterval>[] = [];
-const running = { layers: false, rss: false, daily: false };
+const running = { layers: false, rss: false, daily: false, corpus: false };
 
 export interface CommunityPullResult {
   stream: string;
@@ -43,6 +45,8 @@ function intervalsFromConfig() {
     layersMs: cfg.layersIntervalMinutes * 60_000,
     rssMs: cfg.rssIntervalMinutes * 60_000,
     dailyMs: cfg.dailyIntervalHours * 3_600_000,
+    /** Shared corpora (AIID / APTnotes) — default same cadence as daily, overridable. */
+    corpusMs: Number(process.env.HARVEST_FEEDS_CORPUS_INTERVAL_HOURS || cfg.dailyIntervalHours) * 3_600_000,
     startupDelayMs: cfg.startupDelaySeconds * 1000,
     enabled: cfg.enabled,
   };
@@ -55,8 +59,9 @@ function stableRssId(title: string, link: string): string {
   return `rss:${(h >>> 0).toString(36)}`;
 }
 
-function newsToCommunityItems(items: DigestNewsItem[]): CommunityItem[] {
-  return items.map((item) => {
+async function newsToCommunityItems(items: DigestNewsItem[]): Promise<CommunityItem[]> {
+  const llmLimit = harvestLlmEnrichLimit();
+  return mapPool(items, 3, async (item, index) => {
     const base: CommunityItem = {
       id: item.id || stableRssId(item.title, item.link),
       title: item.title,
@@ -74,7 +79,9 @@ function newsToCommunityItems(items: DigestNewsItem[]): CommunityItem[] {
       location: undefined,
       originalLink: item.link,
     };
-    return { ...base, payload: enrichCommunityPayload(base) };
+    const payload =
+      index < llmLimit ? await enrichCommunityPayloadAsync(base) : enrichCommunityPayload(base);
+    return { ...base, payload };
   });
 }
 
@@ -146,7 +153,7 @@ export async function pullRssDigest(options?: {
       category: src.category,
     }));
     const live = await aggregateRssDigest(categories, maxResults, extraFeeds);
-    const items = newsToCommunityItems(live);
+    const items = await newsToCommunityItems(live);
     const { upserted } = items.length ? await upsertCommunityItems(pool, items, 'rss') : { upserted: 0 };
     return { stream: 'rss', collected: items.length, persisted: upserted, ms: Date.now() - t0 };
   } catch (err: unknown) {
@@ -172,7 +179,7 @@ export async function pullFeedSource(source: CommunityFeedSource): Promise<Commu
       ok,
       error: ok ? undefined : 'no items returned',
     });
-    const items = newsToCommunityItems(live);
+    const items = await newsToCommunityItems(live);
     const { upserted } = items.length ? await upsertCommunityItems(pool, items, 'rss') : { upserted: 0 };
     return {
       stream: `rss:${source.id}`,
@@ -193,9 +200,72 @@ export async function pullFeedSource(source: CommunityFeedSource): Promise<Commu
   }
 }
 
+export async function pullSharedCorpus(options?: {
+  aiidLimit?: number;
+  aptnotesLimit?: number;
+}): Promise<CommunityPullResult[]> {
+  const pool = requirePool();
+  if (running.corpus) {
+    return [
+      { stream: 'aiid', collected: 0, persisted: 0, error: 'already running', ms: 0 },
+      { stream: 'aptnotes', collected: 0, persisted: 0, error: 'already running', ms: 0 },
+    ];
+  }
+  running.corpus = true;
+  const results: CommunityPullResult[] = [];
+  try {
+    // AIID
+    {
+      const t0 = Date.now();
+      try {
+        const items = await fetchAiidCorpus(options?.aiidLimit ?? 2000);
+        const { upserted } = items.length
+          ? await upsertCommunityItems(pool, items, 'aiid')
+          : { upserted: 0 };
+        results.push({
+          stream: 'aiid',
+          collected: items.length,
+          persisted: upserted,
+          ms: Date.now() - t0,
+        });
+      } catch (err: unknown) {
+        const msg = (err as Error)?.message || String(err);
+        await markStreamError(pool, 'aiid', msg);
+        results.push({ stream: 'aiid', collected: 0, persisted: 0, error: msg, ms: Date.now() - t0 });
+      }
+    }
+    // APTnotes
+    {
+      const t0 = Date.now();
+      try {
+        const items = await fetchAptnotesCorpus(options?.aptnotesLimit ?? 400);
+        const { upserted } = items.length
+          ? await upsertCommunityItems(pool, items, 'aptnotes')
+          : { upserted: 0 };
+        results.push({
+          stream: 'aptnotes',
+          collected: items.length,
+          persisted: upserted,
+          ms: Date.now() - t0,
+        });
+      } catch (err: unknown) {
+        const msg = (err as Error)?.message || String(err);
+        await markStreamError(pool, 'aptnotes', msg);
+        results.push({ stream: 'aptnotes', collected: 0, persisted: 0, error: msg, ms: Date.now() - t0 });
+      }
+    }
+  } finally {
+    running.corpus = false;
+  }
+  const total = results.reduce((n, r) => n + r.persisted, 0);
+  console.log(`[harvest-feeds] shared corpus persisted=${total}`);
+  return results;
+}
+
 export async function runCommunityDailyPull(): Promise<{
   layers: CommunityPullResult[];
   rss: CommunityPullResult;
+  corpus: CommunityPullResult[];
   stats: Awaited<ReturnType<typeof getCommunityStats>>;
   streams: Awaited<ReturnType<typeof listStreamStatus>>;
 }> {
@@ -204,6 +274,7 @@ export async function runCommunityDailyPull(): Promise<{
     return {
       layers: [],
       rss: { stream: 'rss', collected: 0, persisted: 0, error: 'daily already running', ms: 0 },
+      corpus: [],
       stats: await getCommunityStats(pool, 48),
       streams: await listStreamStatus(pool),
     };
@@ -212,10 +283,12 @@ export async function runCommunityDailyPull(): Promise<{
   try {
     const layers = await pullFreeLayers();
     const rss = await pullRssDigest({ maxResults: 250 });
+    const corpus = await pullSharedCorpus();
     const pool = requirePool();
     return {
       layers,
       rss,
+      corpus,
       stats: await getCommunityStats(pool, 48),
       streams: await listStreamStatus(pool),
     };
@@ -225,7 +298,7 @@ export async function runCommunityDailyPull(): Promise<{
 }
 
 export function getCommunityPullStatus() {
-  const { layersMs, rssMs, dailyMs, startupDelayMs, enabled } = intervalsFromConfig();
+  const { layersMs, rssMs, dailyMs, corpusMs, startupDelayMs, enabled } = intervalsFromConfig();
   const pool = poolRef;
   const base = {
     enabled,
@@ -235,6 +308,7 @@ export function getCommunityPullStatus() {
       layersMinutes: Math.round(layersMs / 60_000),
       rssMinutes: Math.round(rssMs / 60_000),
       dailyHours: Math.round(dailyMs / 3_600_000),
+      corpusHours: Math.round(corpusMs / 3_600_000),
       startupDelaySeconds: Math.round(startupDelayMs / 1000),
     },
     freeSources: [
@@ -242,6 +316,8 @@ export function getCommunityPullStatus() {
       { id: 'aviation', apis: ['OpenSky'], keyRequired: false },
       { id: 'cyber', apis: ['Feodo', 'URLHaus'], keyRequired: false },
       { id: 'rss', apis: ['GLOBAL_RSS_FEEDS', 'community_feed_sources'], keyRequired: false },
+      { id: 'aiid', apis: ['Judicium AIID corpus'], keyRequired: false },
+      { id: 'aptnotes', apis: ['APTnotes GitHub JSON'], keyRequired: false },
     ],
     store: 'harvest-postgres',
   };
@@ -266,7 +342,7 @@ export function stopCommunityFeedsWorker(): void {
 export function startCommunityFeedsWorker(pool: Pool): void {
   poolRef = pool;
   stopCommunityFeedsWorker();
-  const { layersMs, rssMs, dailyMs, startupDelayMs, enabled } = intervalsFromConfig();
+  const { layersMs, rssMs, dailyMs, corpusMs, startupDelayMs, enabled } = intervalsFromConfig();
   if (!enabled) {
     console.log('[harvest-feeds] Worker disabled (communityFeeds.enabled=false)');
     return;
@@ -274,7 +350,8 @@ export function startCommunityFeedsWorker(pool: Pool): void {
   started = true;
   console.log(
     `[harvest-feeds] Worker scheduled — layers ${Math.round(layersMs / 60_000)}m, ` +
-      `RSS ${Math.round(rssMs / 60_000)}m, daily ${Math.round(dailyMs / 3_600_000)}h`,
+      `RSS ${Math.round(rssMs / 60_000)}m, corpus ${Math.round(corpusMs / 3_600_000)}h, ` +
+      `daily ${Math.round(dailyMs / 3_600_000)}h`,
   );
 
   setTimeout(() => {
@@ -290,6 +367,10 @@ export function startCommunityFeedsWorker(pool: Pool): void {
   timers.push(setInterval(() => {
     pullRssDigest().catch((e) => console.warn('[harvest-feeds] rss failed:', (e as Error).message));
   }, rssMs));
+
+  timers.push(setInterval(() => {
+    pullSharedCorpus().catch((e) => console.warn('[harvest-feeds] corpus failed:', (e as Error).message));
+  }, corpusMs));
 
   timers.push(setInterval(() => {
     runCommunityDailyPull().catch((e) => console.warn('[harvest-feeds] daily failed:', (e as Error).message));
