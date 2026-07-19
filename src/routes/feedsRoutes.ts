@@ -27,7 +27,20 @@ import {
 } from '../feeds/communityPullWorker.js';
 import { aggregateRssDigest, getCuratedFeedDefinitions, getRssCategories } from '../feeds/rssDigest.js';
 import { discoverFeedsFromUrl } from '../feeds/rssFeedDiscovery.js';
+import {
+  listFeedSources,
+  upsertFeedSource,
+  patchFeedSource,
+  deleteFeedSource,
+} from '../feeds/rssFeedRegistry.js';
+import { buildDailySourcesDigest } from '../feeds/dailySourcesDigest.js';
 import { CRUCIX_FEED_SEEDS } from '../feeds/crucixFeedSeeds.js';
+import {
+  filterLegalFeedCatalog,
+  LEGAL_DISCOVERY_SITES,
+  LEGAL_FEED_SEEDS,
+  legalFeedToRegistrySeed,
+} from '../feeds/legalFeedSeeds.js';
 import {
   fetchWorldMonitorFeedCatalog,
   filterWorldMonitorCatalog,
@@ -200,12 +213,13 @@ export function registerFeedsRoutes(app: Express): void {
 
   app.get(`${base}/daily`, async (req, res) => {
     try {
+      const pool = getHarvestPool();
       const hours = parseInt(String(req.query.hours || '24'), 10) || 24;
       const categories = req.query.categories
         ? String(req.query.categories).split(',').map((s) => s.trim()).filter(Boolean)
         : getRssCategories();
-      const items = await aggregateRssDigest(categories, 120);
-      res.json({ hours, categories, items, total: items.length, source: 'harvest-feeds' });
+      const payload = await buildDailySourcesDigest(pool, { hours, categories });
+      res.json(payload);
     } catch (err: unknown) {
       res.status(500).json({ error: (err as Error).message });
     }
@@ -224,6 +238,10 @@ export function registerFeedsRoutes(app: Express): void {
       const which = String(req.body?.which || req.query?.which || 'daily');
       if (which === 'layers') return res.json({ which, results: await pullFreeLayers() });
       if (which === 'rss') return res.json({ which, result: await pullRssDigest() });
+      if (which === 'corpus' || which === 'shared' || which === 'aiid') {
+        const { pullSharedCorpus } = await import('../feeds/communityPullWorker.js');
+        return res.json({ which: 'corpus', results: await pullSharedCorpus() });
+      }
       res.json({ which: 'daily', ...(await runCommunityDailyPull()) });
     } catch (err: unknown) {
       res.status(500).json({ error: (err as Error).message });
@@ -236,6 +254,8 @@ export function registerFeedsRoutes(app: Express): void {
         { id: 'disasters', label: 'Disasters', sources: ['USGS', 'GDACS'], free: true },
         { id: 'aviation', label: 'Aviation', sources: ['OpenSky'], free: true },
         { id: 'cyber', label: 'Cyber', sources: ['Feodo', 'URLHaus'], free: true },
+        { id: 'aiid', label: 'AI Incident Database', sources: ['AIID via Judicium corpus'], free: true },
+        { id: 'aptnotes', label: 'APTnotes', sources: ['GitHub APTnotes JSON'], free: true },
       ],
     });
   });
@@ -328,6 +348,29 @@ export function registerFeedsRoutes(app: Express): void {
     }
   });
 
+  app.get(`${base}/sources/catalog/legal`, async (req, res) => {
+    try {
+      const feeds = filterLegalFeedCatalog({
+        publisher: String(req.query.publisher || '').trim() || undefined,
+        q: String(req.query.q || '').trim() || undefined,
+        limit: Math.min(parseInt(String(req.query.limit || '200'), 10) || 200, 500),
+      });
+      res.json({
+        pack: 'legal',
+        total: LEGAL_FEED_SEEDS.length,
+        filtered: feeds.length,
+        publishers: ['lawyersandsettlements', 'jdsupra', 'court', 'legal-news', 'government', 'cornell-lii', 'govinfo', 'courtlistener'],
+        discoverySites: LEGAL_DISCOVERY_SITES,
+        feeds,
+        note:
+          'Jurist, Courthouse News, and Legal News Feed expose native RSS — HTML scraping is not required. '
+          + 'JD Supra topical feeds: https://www.jdsupra.com/legal-news/rss-law-feeds.aspx',
+      });
+    } catch (err: unknown) {
+      res.status(500).json({ error: (err as Error).message, feeds: [] });
+    }
+  });
+
   app.post(`${base}/sources/import`, async (req, res) => {
     try {
       const pool = poolOr503(res);
@@ -370,12 +413,43 @@ export function registerFeedsRoutes(app: Express): void {
             discoveredVia: s.discoveredVia,
           });
         }
+      } else if (pack === 'legal') {
+        const publisher = typeof req.body?.publisher === 'string' ? req.body.publisher : undefined;
+        const catalog = filterLegalFeedCatalog({ publisher, limit });
+        for (const feed of catalog) {
+          seeds.push(legalFeedToRegistrySeed(feed));
+        }
+        if (req.body?.discover_sites !== false) {
+          for (const siteUrl of LEGAL_DISCOVERY_SITES) {
+            try {
+              const discovery = await discoverFeedsFromUrl(siteUrl);
+              for (const found of discovery.feeds) {
+                const host = new URL(found.feedUrl).hostname.replace(/^www\./, '');
+                seeds.push({
+                  name: found.title || host,
+                  siteUrl: discovery.siteUrl,
+                  feedUrl: found.feedUrl,
+                  category: 'legislation',
+                  discoveredVia: `legal:discover:${found.discoveredVia}`,
+                });
+              }
+            } catch {
+              /* optional discovery */
+            }
+          }
+        }
       } else {
-        return res.status(400).json({ error: 'pack must be crucix or worldmonitor' });
+        return res.status(400).json({ error: 'pack must be crucix, worldmonitor, or legal' });
       }
 
+      const seen = new Set<string>();
+      const dedupedSeeds = seeds.filter((seed) => {
+        if (seen.has(seed.feedUrl)) return false;
+        seen.add(seed.feedUrl);
+        return true;
+      });
       const registered = [];
-      for (const seed of seeds) {
+      for (const seed of dedupedSeeds) {
         registered.push(await upsertFeedSource(pool, {
           ...seed,
           enabled: true,
@@ -389,6 +463,10 @@ export function registerFeedsRoutes(app: Express): void {
         worldMonitorNote:
           pack === 'worldmonitor'
             ? 'Imported AGPL RSS catalog from koala73/worldmonitor — no paid API key required for feeds.'
+            : undefined,
+        legalNote:
+          pack === 'legal'
+            ? 'Legal pack: Lawyers & Settlements, JD Supra, Jurist, Courthouse News, Cornell LII Wex (RSS-native).'
             : undefined,
       });
     } catch (err: unknown) {

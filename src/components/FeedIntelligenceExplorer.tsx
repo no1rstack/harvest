@@ -167,7 +167,7 @@ export function FeedIntelligenceExplorer() {
     }
   };
 
-  const importPack = async (pack: 'crucix' | 'worldmonitor') => {
+  const importPack = async (pack: 'crucix' | 'worldmonitor' | 'legal') => {
     setSourceBusy(true);
     try {
       const body: Record<string, unknown> = { pack };
@@ -175,6 +175,10 @@ export function FeedIntelligenceExplorer() {
         body.variant = 'full';
         body.direct_only = true;
         body.limit = 40;
+      }
+      if (pack === 'legal') {
+        body.limit = 200;
+        body.discover_sites = true;
       }
       const res = await fetch('/api/feeds/community/sources/import', {
         method: 'POST',
@@ -438,9 +442,10 @@ export function FeedIntelligenceExplorer() {
         <div className="text-[10px] text-ink/35">
           Paste a site or feed URL; Harvest checks direct feeds, HTML link tags, and common paths.
           <span className="block mt-1">
-            <strong className="text-ink/45">Crucix-style</strong> seeds (SBS, Indian Express, MercoPress, Al Jazeera) and the free{' '}
-            <a href="https://www.worldmonitor.app/docs/data-sources" target="_blank" rel="noreferrer" className="text-ink/50 hover:text-ink/70">World Monitor AGPL RSS catalog</a>{' '}
-            (no Pro API key — paid API is only for aggregated signals/MCP).
+            <strong className="text-ink/45">Crucix-style</strong> seeds (SBS, Indian Express, MercoPress, Al Jazeera), the free{' '}
+            <a href="https://www.worldmonitor.app/docs/data-sources" target="_blank" rel="noreferrer" className="text-ink/50 hover:text-ink/70">World Monitor AGPL RSS catalog</a>, and{' '}
+            <a href="https://www.jdsupra.com/legal-news/rss-law-feeds.aspx" target="_blank" rel="noreferrer" className="text-ink/50 hover:text-ink/70">legal publishers</a>{' '}
+            (Lawyers &amp; Settlements, JD Supra, Jurist, Courthouse News).
           </span>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -449,6 +454,9 @@ export function FeedIntelligenceExplorer() {
           </button>
           <button type="button" disabled={sourceBusy} onClick={() => void importPack('worldmonitor')} className="border border-ink/[0.08] px-2 py-1 text-[10px] text-ink/55 hover:text-ink/75">
             Import World Monitor RSS (direct)
+          </button>
+          <button type="button" disabled={sourceBusy} onClick={() => void importPack('legal')} className="border border-ink/[0.08] px-2 py-1 text-[10px] text-ink/55 hover:text-ink/75">
+            Import legal RSS pack
           </button>
         </div>
         <div className="flex flex-wrap gap-2">

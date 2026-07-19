@@ -21,6 +21,7 @@ import { upsertObservationRelationships } from '../../../src/collection/relation
 import { appendObservationEvent } from '../../../src/collection/observation-events.js';
 import { discoverFromObservations } from '../../../src/collection/discovery.js';
 import { bridgeWorkflowRunToH3xa } from '../../../src/collection/intelligence-bridge.js';
+import { bridgeWorkflowRunToJudicium } from '../../../src/collection/judicium-bridge.js';
 import { ensureCollectionForRun, finishCollection } from '../../../src/intelligence/core/collections.js';
 import type { ExtractionRun } from '../../../src/intelligence/core/extractions.js';
 import { persistObservationLineage } from '../../../src/intelligence/core/ingest.js';
@@ -71,6 +72,7 @@ export async function persistObservationsStep(
   const appendRun = Boolean(stream?.append_run);
   const isFirstBatch = !stream || stream.batch_index === 0;
   const isLastBatch = !stream || Boolean(stream.finish_run);
+  const exec = opts.execution;
 
   if (isFirstBatch && !appendRun) {
     await ensureCollectionForRun(pool, {
@@ -111,7 +113,6 @@ export async function persistObservationsStep(
   let inserted = 0;
   let skipped = 0;
   const observationIds: string[] = [];
-  const exec = opts.execution;
   const extractionCache = new Map<string, ExtractionRun>();
 
   for (const obs of opts.observations) {
@@ -355,6 +356,24 @@ export async function finalizeCollectionStep(
       });
     } catch {
       /* H3XA bridge is best-effort when H3XA_DATABASE_URL unset */
+    }
+
+    try {
+      const jud = await bridgeWorkflowRunToJudicium(pool, {
+        workflowRunId: opts.workflowRunId,
+        targetId: target.id,
+        targetValue: target.value,
+        caseId: target.case_id,
+      });
+      await publishCollectionEvent(pool, {
+        event_type: 'judicium.synced',
+        target_id: target.id,
+        run_id: opts.workflowRunId,
+        cascades_run_id: opts.workflowRunId,
+        payload: jud as unknown as Record<string, unknown>,
+      });
+    } catch {
+      /* Judicium bridge is best-effort when token/URL unset */
     }
   }
 

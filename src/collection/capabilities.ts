@@ -18,6 +18,11 @@ export const COLLECTION_CAPABILITIES = [
   'feed_ingestion',
   'cloud_exposure',
   'document_intel',
+  'statistical_context',
+  'financial_crime_context',
+  'crypto_ledger',
+  'aviation_adsb',
+  'threat_reports',
 ] as const;
 
 export type CollectionCapability = (typeof COLLECTION_CAPABILITIES)[number];
@@ -36,6 +41,11 @@ export const CAPABILITY_LABELS: Record<CollectionCapability, string> = {
   feed_ingestion: 'Feed Ingestion',
   cloud_exposure: 'Cloud Asset Exposure',
   document_intel: 'Document Intelligence',
+  statistical_context: 'UN / Development Statistics',
+  financial_crime_context: 'AML / FinCEN / lobbying context',
+  crypto_ledger: 'Public ledger / IBAN validation',
+  aviation_adsb: 'Live ADS-B (OpenSky)',
+  threat_reports: 'APT campaign report index',
 };
 
 /** Which provider connectors satisfy each capability (workflow may subset further). */
@@ -53,6 +63,11 @@ export const CAPABILITY_CONNECTORS: Record<CollectionCapability, readonly string
   feed_ingestion: ['rss'],
   cloud_exposure: ['dns', 'crtsh'],
   document_intel: ['wayback', 'rss'],
+  statistical_context: ['undata', 'worldbank', 'datagov'],
+  financial_crime_context: ['fincen', 'aleph', 'datagov'],
+  crypto_ledger: ['blockchain', 'iban'],
+  aviation_adsb: ['opensky'],
+  threat_reports: ['aptnotes'],
 };
 
 export function connectorsForCapabilities(capabilities: readonly CollectionCapability[]): string[] {

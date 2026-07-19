@@ -49,7 +49,7 @@ export function inferSourceClass(stream: string, sourceName: string, category: s
   if (/worldmonitor|usgs|gdacs|firms|opensky|adsb|ais|celestrak|earthquake|wildfire|sensor/.test(s)) {
     return 'sensor';
   }
-  if (/ofac|sanction|govtrack|advisory|wikidata|court|legislation|authority/.test(s)) {
+  if (/ofac|sanction|govtrack|advisory|wikidata|court|legislation|authority|aiid|aptnotes|incident/.test(s)) {
     return 'authority';
   }
   if (/telegram|twitter|x @|youtube|discord|reddit|mastodon|social/.test(s)) {

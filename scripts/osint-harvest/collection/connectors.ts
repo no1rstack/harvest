@@ -10,6 +10,16 @@ import { hackertargetHarvester } from '../harvesters/hackertarget.js';
 import { urlhausHarvester } from '../harvesters/urlhaus.js';
 import { rssHarvester } from '../harvesters/rss.js';
 import { holeheHarvester, sherlockHarvester, maigretHarvester } from '../harvesters/identity-cli.js';
+import { undataHarvester } from '../harvesters/undata.js';
+import {
+  worldbankHarvester,
+  datagovHarvester,
+  fincenHarvester,
+  blockchainHarvester,
+  ibanHarvester,
+  alephHarvester,
+} from '../harvesters/open-data.js';
+import { aptnotesHarvester, openskyHarvester } from '../harvesters/transport-threat.js';
 import type { Harvester, HarvestFinding } from '../types.js';
 import type { CollectionTarget } from '../../../src/collection/types.js';
 import { CONNECTOR_VERSION } from '../../../src/collection/executionContext.js';
@@ -25,6 +35,15 @@ const ALL_HARVESTERS: Harvester[] = [
   holeheHarvester,
   sherlockHarvester,
   maigretHarvester,
+  undataHarvester,
+  worldbankHarvester,
+  datagovHarvester,
+  fincenHarvester,
+  blockchainHarvester,
+  ibanHarvester,
+  alephHarvester,
+  aptnotesHarvester,
+  openskyHarvester,
 ];
 
 export const HARVESTER_MAP = new Map(ALL_HARVESTERS.map((h) => [h.id, h]));

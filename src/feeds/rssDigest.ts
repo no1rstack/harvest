@@ -14,6 +14,8 @@ export interface DigestNewsItem {
   publishedAt: string;
 }
 
+import { LEGAL_PLATFORM_FEEDS } from './legalFeedSeeds.js';
+
 export type FeedDef = { name: string; url: string; category: string };
 
 const FREE_FEEDS: FeedDef[] = [
@@ -35,7 +37,7 @@ const FREE_FEEDS: FeedDef[] = [
 
 const CATEGORY_SET = new Set([
   'geopolitics', 'disaster', 'cyber', 'defense', 'osint', 'sanctions',
-  'maritime', 'aviation', 'finance', 'energy',
+  'maritime', 'aviation', 'finance', 'energy', 'legislation',
 ]);
 
 async function fetchRssFeed(url: string, name: string, category: string): Promise<DigestNewsItem[]> {
@@ -116,5 +118,10 @@ export function getRssCategories(): string[] {
 }
 
 export function getCuratedFeedDefinitions(): FeedDef[] {
-  return [...FREE_FEEDS];
+  const legal = LEGAL_PLATFORM_FEEDS.map((f) => ({
+    name: f.name,
+    url: f.feedUrl,
+    category: f.category,
+  }));
+  return [...FREE_FEEDS, ...legal];
 }

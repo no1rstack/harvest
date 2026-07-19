@@ -8,7 +8,7 @@ export function defaultCommunityFeedsModuleConfig(): PlatformCommunityFeedsModul
     enabled: process.env.HARVEST_FEEDS_ENABLED !== '0',
     delegateFromJudicium: process.env.HARVEST_FEEDS_DELEGATE_JUDICIUM !== '0',
     layersIntervalMinutes: Number(process.env.HARVEST_FEEDS_LAYERS_INTERVAL_MINUTES || 30),
-    rssIntervalMinutes: Number(process.env.HARVEST_FEEDS_RSS_INTERVAL_MINUTES || 60),
+    rssIntervalMinutes: Number(process.env.HARVEST_FEEDS_RSS_INTERVAL_MINUTES || 15),
     dailyIntervalHours: Number(process.env.HARVEST_FEEDS_DAILY_INTERVAL_HOURS || 24),
     startupDelaySeconds: Number(process.env.HARVEST_FEEDS_STARTUP_DELAY_SECONDS || 20),
   };

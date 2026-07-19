@@ -13,6 +13,8 @@
     "osint:harvest": "tsx scripts/osint-harvest/index.ts",
     "osint:harvest:list": "tsx scripts/osint-harvest/index.ts --list",
     "osint:db:sync": "bash scripts/sync-infisical-db.sh",
+    "infisical:sync": "bash scripts/sync-infisical-env.sh",
+    "feeds:import:legal": "tsx scripts/import-legal-feeds.ts",
     "osint:daily": "bash scripts/osint-harvest/daily-pull.sh",
     "osint:daily:dry": "bash scripts/osint-harvest/daily-pull.sh --dry-run",
     "osint:collect": "tsx scripts/osint-harvest/collect.ts",
@@ -23,6 +25,7 @@
     "osint:serve": "bash scripts/osint-harvest/serve.sh"
   },
   "dependencies": {
+    "@noirstack/web-foundation": "^0.1.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "clsx": "^2.1.1",
@@ -47,11 +50,10 @@
     "@types/pg": "^8.20.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "esbuild": "^0.25.0",
     "p-retry": "^8.0.0",
     "tailwindcss": "^4.1.14",
     "typescript": "~5.8.2",
-    "typescript": "~5.8.2",
-    "esbuild": "^0.25.0",
     "vitest": "^4.1.9"
   }
 }

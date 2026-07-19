@@ -27,14 +27,16 @@ import { registerCollectionRoutes } from './src/routes/collectionRoutes.js';
 import { registerIntelligenceRoutes } from './src/routes/intelligenceRoutes.js';
 import { registerPlatformRoutes, bootPlatformScheduler } from './src/routes/platformRoutes.js';
 import { registerFeedsRoutes } from './src/routes/feedsRoutes.js';
+import { registerHarvestV1Routes } from './src/api/v1/routes.js';
 import { registerDataCatalogRoutes } from './src/routes/dataCatalogRoutes.js';
 import { registerModuleRoutes, communityFeedsContractHeaders } from './src/routes/moduleRoutes.js';
 import { renderMetricsText } from './src/api/metrics.js';
+import { attachWebFoundation } from './src/lib/web-foundation.js';
 
 const app = express();
 const server = createServer(app);
 
-app.set('trust proxy', true);
+attachWebFoundation(app);
 
 app.use(express.json({ limit: '1mb' }));
 
@@ -121,6 +123,7 @@ registerCollectionRoutes(app);
 registerIntelligenceRoutes(app);
 registerPlatformRoutes(app);
 app.use('/api/feeds/community', communityFeedsContractHeaders);
+registerHarvestV1Routes(app);
 registerFeedsRoutes(app);
 registerModuleRoutes(app);
 registerDataCatalogRoutes(app);

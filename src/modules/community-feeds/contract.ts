@@ -1,10 +1,14 @@
 import type { HarvestModuleContract } from '../types.js';
 
-export const COMMUNITY_FEEDS_CONTRACT_VERSION = '1.2.0';
+export const COMMUNITY_FEEDS_CONTRACT_VERSION = '1.4.0';
 
 export const COMMUNITY_FEEDS_MODULE_ID = 'community-feeds' as const;
 
-/** Canonical API base (Harvest-owned). Judicium proxies /api/community/* here. */
+/** Harvest foundation API — World Monitor layout (/api/<service>/v1/<rpc-name>). */
+export const HARVEST_FOUNDATION_API_REFERENCE =
+  'https://www.worldmonitor.app/docs/api-reference';
+
+/** Legacy Judicium proxy base — map/UI may use any shape; foundation is v1 RPCs. */
 export const COMMUNITY_FEEDS_API_BASE = '/api/feeds/community';
 
 export const communityFeedsContract: HarvestModuleContract = {
@@ -12,7 +16,7 @@ export const communityFeedsContract: HarvestModuleContract = {
   version: COMMUNITY_FEEDS_CONTRACT_VERSION,
   name: 'Community Feeds',
   description:
-    'Operating-picture aggregation: RSS, sensor layers, enrichment, slice/dice facets, and optional keyword expansion into collection.',
+    'Operating-picture aggregation: RSS, sensor layers, enrichment. Harvest foundation APIs follow World Monitor service layout; Judicium community map uses legacy proxy paths.',
   owner: 'harvest',
   store: {
     database: 'harvest-postgres',
@@ -20,9 +24,28 @@ export const communityFeedsContract: HarvestModuleContract = {
   },
   services: [
     {
-      id: 'community-feeds-api',
+      id: 'harvest-foundation-v1',
       kind: 'api',
-      description: 'Read and operate on aggregated community intelligence items.',
+      description: 'Canonical Harvest RPC surface (World Monitor API layout).',
+      basePath: '/api',
+      endpoints: [
+        { method: 'GET', path: '/news/v1/list-feed-digest', auth: 'session', description: 'RSS digest by category (NewsItem envelope)' },
+        { method: 'GET', path: '/news/v1/list-community-items', auth: 'session', description: 'Filtered narrative items' },
+        { method: 'GET', path: '/news/v1/list-feed-sources', auth: 'session', description: 'Feed source registry' },
+        { method: 'GET', path: '/seismology/v1/list-earthquakes', auth: 'session', description: 'USGS earthquakes' },
+        { method: 'GET', path: '/climate/v1/list-climate-disasters', auth: 'session', description: 'GDACS disasters' },
+        { method: 'GET', path: '/cyber/v1/list-cyber-threats', auth: 'session', description: 'Feodo/URLHaus indicators' },
+        { method: 'GET', path: '/aviation/v1/list-aircraft-positions', auth: 'session', description: 'OpenSky snapshot' },
+        { method: 'POST', path: '/batch/v1/execute', auth: 'session', description: 'Batch read fan-out (max 20 GETs)' },
+        { method: 'GET', path: '/platform/v1/list-services', auth: 'session', description: 'Service catalog' },
+        { method: 'GET', path: '/platform/v1/get-community-status', auth: 'session', description: 'Pull worker status' },
+        { method: 'POST', path: '/platform/v1/run-community-pull', auth: 'collection-token', description: 'Trigger ingestion pull' },
+      ],
+    },
+    {
+      id: 'community-feeds-legacy',
+      kind: 'api',
+      description: 'Legacy aliases for Judicium /api/community/* proxy — not the foundation layer.',
       basePath: COMMUNITY_FEEDS_API_BASE,
       endpoints: [
         { method: 'GET', path: '/items', judiciumProxyPath: '/api/community/items', auth: 'session', description: 'List/filter community items' },
@@ -41,8 +64,9 @@ export const communityFeedsContract: HarvestModuleContract = {
         { method: 'POST', path: '/sources/discover', judiciumProxyPath: '/api/community/sources/discover', auth: 'session', description: 'Discover feeds from a site or feed URL' },
         { method: 'POST', path: '/sources', judiciumProxyPath: '/api/community/sources', auth: 'session', description: 'Register a feed source for automatic pull' },
         { method: 'POST', path: '/sources', judiciumProxyPath: '/api/community/sources', auth: 'session', description: 'Register a feed source for automatic pull' },
-        { method: 'POST', path: '/sources/import', judiciumProxyPath: '/api/community/sources/import', auth: 'session', description: 'Bulk-import Crucix seeds or World Monitor AGPL RSS catalog' },
+        { method: 'POST', path: '/sources/import', judiciumProxyPath: '/api/community/sources/import', auth: 'session', description: 'Bulk-import Crucix, World Monitor, or legal RSS catalog' },
         { method: 'GET', path: '/sources/catalog/worldmonitor', judiciumProxyPath: '/api/community/sources/catalog/worldmonitor', auth: 'session', description: 'Browse World Monitor open-source RSS catalog (_feeds.ts)' },
+        { method: 'GET', path: '/sources/catalog/legal', judiciumProxyPath: '/api/community/sources/catalog/legal', auth: 'session', description: 'Browse legal RSS catalog (Lawyers & Settlements, JD Supra, courts)' },
         { method: 'PATCH', path: '/sources/:id', judiciumProxyPath: '/api/community/sources/:id', auth: 'session', description: 'Update feed source (enable, category, auto-pull)' },
         { method: 'DELETE', path: '/sources/:id', judiciumProxyPath: '/api/community/sources/:id', auth: 'session', description: 'Remove a registered feed source' },
         { method: 'POST', path: '/sources/:id/pull', judiciumProxyPath: '/api/community/sources/:id/pull', auth: 'collection-token', description: 'Pull one registered feed immediately' },
@@ -52,16 +76,17 @@ export const communityFeedsContract: HarvestModuleContract = {
   workers: [
     { id: 'feeds-layers', description: 'USGS/GDACS, OpenSky, Feodo/URLHaus pulls', schedulerKinds: ['feeds-layers'] },
     { id: 'feeds-rss', description: 'Global RSS digest + registered feed sources', schedulerKinds: ['feeds-rss'] },
-    { id: 'feeds-daily', description: 'Full daily community pull cycle', schedulerKinds: ['feeds-daily'] },
+    { id: 'feeds-corpus', description: 'Shared corpora (AIID, APTnotes) → community_items', schedulerKinds: ['feeds-corpus'] },
+    { id: 'feeds-daily', description: 'Full daily community pull cycle (layers + RSS + corpus)', schedulerKinds: ['feeds-daily'] },
   ],
   consumers: [
     {
       consumer: 'judicium',
       role: 'read',
       mustUse: [
-        'GET /api/community/items',
-        'GET /api/community/facets',
-        'GET /api/community/status',
+        'GET /api/news/v1/list-feed-digest (foundation)',
+        'GET /api/news/v1/list-community-items (foundation)',
+        'GET /api/community/items (legacy proxy — any map shape)',
       ],
       mustNot: [
         'own community_items primary store',
