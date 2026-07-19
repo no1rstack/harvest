@@ -1,0 +1,15 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow obvious placeholder values in docs and sample URLs"
+paths = [
+  '''docs/.*''',
+  '''openapi/.*'''
+]
+
+regexes = [
+  '''example\.com''',
+  '''127\.0\.0\.1''',
+  '''localhost'''
+]

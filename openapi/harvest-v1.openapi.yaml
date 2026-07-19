@@ -1,0 +1,181 @@
+openapi: 3.1.0
+info:
+  title: Harvest Foundation API v1
+  version: 0.1.0
+  description: Minimal OpenAPI surface for automated review and dynamic fuzzing.
+servers:
+  - url: http://127.0.0.1:3020
+tags:
+  - name: news
+  - name: platform
+  - name: batch
+paths:
+  /api/news/v1/list-feed-digest:
+    get:
+      tags: [news]
+      summary: Aggregated feed digest
+      parameters:
+        - in: query
+          name: variant
+          schema:
+            type: string
+        - in: query
+          name: live
+          schema:
+            type: string
+            enum: ['0', '1']
+        - in: query
+          name: hours
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 168
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+      responses:
+        '200':
+          description: Digest response
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/news/v1/list-community-items:
+    get:
+      tags: [news]
+      summary: Filtered community items
+      parameters:
+        - in: query
+          name: hours
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 168
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+        - in: query
+          name: stream
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Community items response
+          content:
+            application/json:
+              schema:
+                type: object
+        '503':
+          description: Database not configured
+  /api/news/v1/list-feed-sources:
+    get:
+      tags: [news]
+      summary: Registered feed sources
+      responses:
+        '200':
+          description: Feed source list
+          content:
+            application/json:
+              schema:
+                type: object
+        '503':
+          description: Database not configured
+  /api/platform/v1/list-services:
+    get:
+      tags: [platform]
+      summary: Harvest v1 service catalog
+      responses:
+        '200':
+          description: Service catalog
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/platform/v1/get-community-status:
+    get:
+      tags: [platform]
+      summary: Community worker status
+      responses:
+        '200':
+          description: Worker status
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/platform/v1/run-community-pull:
+    post:
+      tags: [platform]
+      summary: Trigger community pull workflow
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                which:
+                  type: string
+                  enum: [layers, rss, daily, corpus, shared, aiid]
+      responses:
+        '200':
+          description: Pull accepted
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Authentication required
+        '403':
+          description: CSRF or auth rejection
+  /api/batch/v1/execute:
+    post:
+      tags: [batch]
+      summary: Execute a read-only RPC batch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [operations]
+              properties:
+                operations:
+                  type: array
+                  minItems: 1
+                  maxItems: 20
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [path]
+                    properties:
+                      id:
+                        type: string
+                      path:
+                        type: string
+      responses:
+        '200':
+          description: Batch result
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object

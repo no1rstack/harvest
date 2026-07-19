@@ -1,0 +1,3 @@
+10020	IGNORE	X-Frame-Options header handled by helmet/web-foundation
+10021	IGNORE	X-Content-Type-Options header handled by helmet/web-foundation
+10035	WARN	Strict-Transport-Security should still be reviewed in deployed env

@@ -23,3 +23,22 @@ npm run osint:serve
 ```
 
 See `docs/COLLECTION-PLATFORM.md` for architecture.
+
+## Security review
+
+```bash
+npm run review:security
+```
+
+Visual flow and artifact details live in `docs/SECURITY-REVIEW-FLOW.md`.
+
+## Ontology automation
+
+```bash
+npm run ontology:export
+npm run ontology:compare:foundry
+npm run ontology:map:foundry
+npm run ontology:canonicalize:foundry
+```
+
+See `docs/ONTOLOGY-AUTOMATION.md` for the Foundry and OpenClaw local CLI flow.

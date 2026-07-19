@@ -1,0 +1,40 @@
+rules:
+  - id: harvest-platform-v1-post-route-review
+    message: Privileged /api/platform/v1 POST routes require explicit auth and token-review.
+    severity: ERROR
+    languages: [typescript]
+    patterns:
+      - pattern-either:
+          - pattern: app.post('/api/platform/v1/$ROUTE', ...)
+          - pattern: app.post("/api/platform/v1/$ROUTE", ...)
+    metadata:
+      category: security
+      technology: [express]
+
+  - id: harvest-opensky-anonymous-global-states
+    message: Anonymous OpenSky calls should use a bounded query to reduce timeout and rate-limit risk.
+    severity: WARNING
+    languages: [typescript]
+    patterns:
+      - pattern: |
+          fetchJson(
+            'https://opensky-network.org/api/states/all',
+            ...
+          )
+    metadata:
+      category: reliability
+      technology: [opensky]
+
+  - id: harvest-live-external-call-must-timeout
+    message: External fetches in harvesters should set an explicit timeout.
+    severity: WARNING
+    languages: [typescript]
+    paths:
+      include:
+        - scripts/osint-harvest/harvesters/*.ts
+    patterns:
+      - pattern: fetchJson($URL, $OPTS)
+      - pattern-not: fetchJson($URL, { ... timeoutMs: $TIMEOUT, ... })
+    metadata:
+      category: reliability
+      technology: [harvesters]

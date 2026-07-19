@@ -1,0 +1,17 @@
+format: table
+exit-code: 1
+quiet: false
+severity:
+  - CRITICAL
+  - HIGH
+  - MEDIUM
+scanners:
+  - vuln
+  - secret
+  - config
+ignore-unfixed: true
+skip-dirs:
+  - node_modules
+  - dist
+  - artifacts
+  - .git

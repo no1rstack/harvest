@@ -1,0 +1,74 @@
+name: security-review
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: returntocorp/semgrep-action@v1
+        with:
+          config: .semgrep/harvest.yml
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@0.31.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          trivy-config: trivy.yaml
+
+  app-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  schemathesis:
+    runs-on: ubuntu-latest
+    if: ${{ vars.SCHEMATHESIS_BASE_URL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install schemathesis
+      - run: schemathesis run --url "${{ vars.SCHEMATHESIS_BASE_URL }}" --report-junit-path schemathesis-junit.xml openapi/harvest-v1.openapi.yaml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: schemathesis-report
+          path: schemathesis-junit.xml
+
+  zap-baseline:
+    runs-on: ubuntu-latest
+    if: ${{ vars.ZAP_TARGET_URL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: ZAP baseline
+        run: docker run --rm -v "$PWD:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t "${{ vars.ZAP_TARGET_URL }}" -r zap-report.html -w zap-report.md -c .zap/rules.tsv
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: |
+            zap-report.html
+            zap-report.md
