@@ -1,0 +1,87 @@
+# Secrets managed via Infisical (crypt.noirstack.com)
+# Deploy: ./deploy.sh
+
+services:
+  harvest:
+    container_name: harvest
+    image: ghcr.io/no1rstack/harvest:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    security_opt:
+      - seccomp=unconfined
+    env_file:
+      - .env.vps
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - BIND_HOST=0.0.0.0
+      - HOSTNAME
+      - HARVEST_DATABASE_URL
+      - HARVEST_PG_HOST_REWRITE
+      - COLLECTION_INTERNAL_TOKEN
+      - COLLECTION_API_URL
+      - CASCADES_API_URL
+      - CASCADES_PUBLIC_URL
+      - KEYCLOAK_BASE_URL
+      - KEYCLOAK_REALM
+      - KEYCLOAK_CLIENT_ID
+      - KEYCLOAK_CLIENT_SECRET
+      - KEYCLOAK_REDIRECT_URI
+      - KEYCLOAK_HOME_URL
+      - HARVEST_AUTH_REQUIRED
+      - HARVEST_COOKIE_SECURE
+      - HARVEST_PUBLIC_URL
+      - HARVEST_SCHEDULER_ENABLED
+      - HARVEST_CASCADES_DUE_ENABLED
+      - HARVEST_CASCADES_DUE_INTERVAL_MINUTES
+      - HARVEST_DAILY_PULL_ENABLED
+      - HARVEST_DAILY_PULL_MODE
+      - HARVEST_DAILY_PULL_INTERVAL_HOURS
+      - HARVEST_FEEDS_ENABLED
+      - HARVEST_FEEDS_DELEGATE_JUDICIUM
+      - HARVEST_LLM_ENRICH
+      - HARVEST_LLM_MODEL
+      - HARVEST_LLM_ENRICH_LIMIT
+      - HARVEST_LLM_TIMEOUT_MS
+      - OLLAMA_URL
+      - LITELLM_BASE_URL
+      - LITELLM_API_KEY
+      - LITELLM_MODEL
+      - COPILOT_API_URL
+      - COPILOT_API_KEY
+      - COPILOT_MODEL
+      - JUDICIUM_URL
+      - JUDICIUM_INTERNAL_URL
+      - JUDICIUM_PUBLIC_URL
+      - JUDICIUM_SERVICE_TOKEN
+      - JUDICIUM_API_KEY
+      - HARVEST_PLATFORM_CONFIG_DIR
+      - HARVEST_REQUIRED_ROLES
+      - HARVEST_REQUIRED_ROLE
+      - GIT_COMMIT_SHA
+      - CI_PIPELINE_ID
+      - WEB_FOUNDATION_IP_TRACKING
+      - WEB_FOUNDATION_IP_HASH_SALT
+      - WEB_FOUNDATION_REQUEST_LOGGING
+      - HEX_ARCH_EVENTS_URL
+      - HEX_ARCH_EVENTS_TOKEN
+    networks:
+      - traefik
+    volumes:
+      - harvest-platform-data:/app/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+networks:
+  traefik:
+    external: true
+
+volumes:
+  harvest-platform-data:
