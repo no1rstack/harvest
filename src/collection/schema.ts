@@ -1,6 +1,55 @@
 /** SQL for Collection Platform tables in the shared harvest database. */
 
 export const COLLECTION_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS osint_harvest_runs (
+  id TEXT PRIMARY KEY,
+  target TEXT NOT NULL,
+  case_id INTEGER,
+  product TEXT NOT NULL DEFAULT 'shared',
+  user_id TEXT NOT NULL DEFAULT 'harvest',
+  harvesters TEXT[] DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'running',
+  total_findings INTEGER DEFAULT 0,
+  inserted INTEGER DEFAULT 0,
+  skipped INTEGER DEFAULT 0,
+  errors JSONB DEFAULT '[]'::jsonb,
+  started_at TIMESTAMPTZ DEFAULT NOW(),
+  finished_at TIMESTAMPTZ,
+  metadata JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE TABLE IF NOT EXISTS osint_harvest_findings (
+  id TEXT PRIMARY KEY,
+  run_id TEXT NOT NULL REFERENCES osint_harvest_runs(id) ON DELETE CASCADE,
+  case_id INTEGER,
+  product TEXT NOT NULL DEFAULT 'shared',
+  source TEXT NOT NULL,
+  source_id TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  value TEXT NOT NULL,
+  label TEXT NOT NULL DEFAULT '',
+  title TEXT NOT NULL DEFAULT '',
+  description TEXT DEFAULT '',
+  severity TEXT DEFAULT 'info',
+  confidence REAL DEFAULT 0.7,
+  tags TEXT[] DEFAULT '{}',
+  content_hash TEXT NOT NULL,
+  raw JSONB DEFAULT '{}'::jsonb,
+  related JSONB DEFAULT '[]'::jsonb,
+  observed_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(content_hash)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ohf_run ON osint_harvest_findings(run_id);
+CREATE INDEX IF NOT EXISTS idx_ohf_product ON osint_harvest_findings(product);
+CREATE INDEX IF NOT EXISTS idx_ohf_source ON osint_harvest_findings(source);
+CREATE INDEX IF NOT EXISTS idx_ohf_entity ON osint_harvest_findings(entity_type);
+CREATE INDEX IF NOT EXISTS idx_ohf_value ON osint_harvest_findings(value);
+CREATE INDEX IF NOT EXISTS idx_ohf_observed ON osint_harvest_findings(observed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ohf_severity ON osint_harvest_findings(severity);
+CREATE INDEX IF NOT EXISTS idx_ohf_created ON osint_harvest_findings(created_at DESC);
+
 CREATE TABLE IF NOT EXISTS collection_targets (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   target_type TEXT NOT NULL,

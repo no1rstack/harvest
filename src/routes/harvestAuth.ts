@@ -268,6 +268,11 @@ export function requireHarvestAuth(req: Request, res: Response, next: NextFuncti
     return next();
   }
 
+  const wantsJson =
+    harvestApi ||
+    String(req.headers.accept || '').includes('application/json') ||
+    Boolean(req.xhr);
+
   const user = getHarvestSession(req);
   if (user) {
     if (!userHasRequiredRoles(user, c.requiredRoles)) {
@@ -282,11 +287,6 @@ export function requireHarvestAuth(req: Request, res: Response, next: NextFuncti
     (req as any).harvestUser = user;
     return next();
   }
-
-  const wantsJson =
-    harvestApi ||
-    String(req.headers.accept || '').includes('application/json') ||
-    Boolean(req.xhr);
 
   if (wantsJson) {
     return res.status(401).json({
