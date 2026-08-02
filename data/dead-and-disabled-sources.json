@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-08-02T17:25:00Z",
+  "total": 2,
+  "sources": [
+    {
+      "name": "theHarvester (CLI)",
+      "domain": "github.com/laramies/theHarvester",
+      "category": "infrastructure",
+      "source_type": "cli",
+      "access_method": "cli_tool",
+      "feed_url": "N/A",
+      "site_url": "https://github.com/laramies/theHarvester",
+      "status": "disabled",
+      "auth_required": false,
+      "verified_at": null,
+      "registration": "connector:theharvester (inactive)",
+      "records_collected": null,
+      "consumers": []
+    },
+    {
+      "name": "OWASP Amass (CLI)",
+      "domain": "github.com/owasp-amass/amass",
+      "category": "infrastructure",
+      "source_type": "cli",
+      "access_method": "cli_tool",
+      "feed_url": "N/A",
+      "site_url": "https://github.com/owasp-amass/amass",
+      "status": "disabled",
+      "auth_required": false,
+      "verified_at": null,
+      "registration": "connector:amass (inactive)",
+      "records_collected": null,
+      "consumers": []
+    }
+  ]
+}

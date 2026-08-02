@@ -15,7 +15,7 @@ import { inferSourceClass } from './communityTypes.js';
 import { enrichCommunityPayload, enrichCommunityPayloadAsync } from './feedEnrichment.js';
 import { harvestLlmEnrichLimit, mapPool } from '../lib/llmClient.js';
 import { aggregateRssDigest, type DigestNewsItem, type FeedDef } from './rssDigest.js';
-import { listFeedSources, touchFeedSourceHealth, type CommunityFeedSource } from './rssFeedRegistry.js';
+import { listDueFeedSources, adjustFeedCadence, listFeedSources, touchFeedSourceHealth, type CommunityFeedSource } from './rssFeedRegistry.js';
 import { loadPlatformConfig } from '../platform/config.js';
 import { fetchAiidCorpus, fetchAptnotesCorpus } from './sharedCorpusPull.js';
 
@@ -49,6 +49,10 @@ function intervalsFromConfig() {
     corpusMs: Number(process.env.HARVEST_FEEDS_CORPUS_INTERVAL_HOURS || cfg.dailyIntervalHours) * 3_600_000,
     startupDelayMs: cfg.startupDelaySeconds * 1000,
     enabled: cfg.enabled,
+    /** Adaptive RSS cadence */
+    rssAdaptiveMaxMinutes: cfg.rssAdaptiveMaxMinutes ?? 1440,
+    rssAdaptiveNoopThreshold: cfg.rssAdaptiveNoopThreshold ?? 3,
+    rssBaseMinutes: cfg.rssIntervalMinutes,
   };
 }
 
@@ -146,15 +150,58 @@ export async function pullRssDigest(options?: {
   try {
     const categories = options?.categories || DAILY_CATEGORIES;
     const maxResults = options?.maxResults ?? 200;
-    const registryFeeds = await listFeedSources(pool, { enabledOnly: true });
-    const extraFeeds: FeedDef[] = registryFeeds.map((src) => ({
+    const { rssAdaptiveMaxMinutes, rssAdaptiveNoopThreshold, rssBaseMinutes } = intervalsFromConfig();
+
+    // Only pull registry feeds that are due (adaptive cadence).
+    // aggregateRssDigest already includes the curated FREE_FEEDS internally.
+    const dueFeeds = await listDueFeedSources(pool, {
+      baseIntervalMinutes: rssBaseMinutes,
+      maxIntervalMinutes: rssAdaptiveMaxMinutes,
+    });
+
+    const extraFeeds: FeedDef[] = dueFeeds.map((src) => ({
       name: src.name,
       url: src.feedUrl,
       category: src.category,
     }));
+
     const live = await aggregateRssDigest(categories, maxResults, extraFeeds);
     const items = await newsToCommunityItems(live);
     const { upserted } = items.length ? await upsertCommunityItems(pool, items, 'rss') : { upserted: 0 };
+
+    // Per-feed cadence adjustment: count items per registry feed
+    const feedItemCounts = new Map<string, number>();
+    for (const item of live) {
+      for (const df of extraFeeds) {
+        if (item.source === df.name) {
+          feedItemCounts.set(df.name, (feedItemCounts.get(df.name) || 0) + 1);
+          break;
+        }
+      }
+    }
+
+    // Update cadence for each due feed
+    for (const src of dueFeeds) {
+      const count = feedItemCounts.get(src.name) || 0;
+      await adjustFeedCadence(pool, src.id, count, {
+        baseIntervalMinutes: rssBaseMinutes,
+        maxIntervalMinutes: rssAdaptiveMaxMinutes,
+        noopThreshold: rssAdaptiveNoopThreshold,
+      });
+    }
+
+    if (dueFeeds.length > 0) {
+      const intervals = dueFeeds.map(f => f.adaptiveIntervalMinutes);
+      const avg = Math.round(intervals.reduce((a, b) => a + b, 0) / intervals.length);
+      const max = Math.max(...intervals);
+      console.log(
+        `[harvest-feeds] RSS pulled ${dueFeeds.length} due feeds ` +
+        `(avg cadence ${avg}m, max ${max}m) — ${live.length} items, ${upserted} new`,
+      );
+    } else {
+      console.log(`[harvest-feeds] RSS no due feeds — 0 items pulled`);
+    }
+
     return { stream: 'rss', collected: items.length, persisted: upserted, ms: Date.now() - t0 };
   } catch (err: unknown) {
     const msg = (err as Error)?.message || String(err);
@@ -298,7 +345,8 @@ export async function runCommunityDailyPull(): Promise<{
 }
 
 export function getCommunityPullStatus() {
-  const { layersMs, rssMs, dailyMs, corpusMs, startupDelayMs, enabled } = intervalsFromConfig();
+  const { layersMs, rssMs, dailyMs, corpusMs, startupDelayMs, enabled,
+    rssAdaptiveMaxMinutes, rssAdaptiveNoopThreshold, rssBaseMinutes } = intervalsFromConfig();
   const pool = poolRef;
   const base = {
     enabled,
@@ -307,6 +355,8 @@ export function getCommunityPullStatus() {
     intervals: {
       layersMinutes: Math.round(layersMs / 60_000),
       rssMinutes: Math.round(rssMs / 60_000),
+      rssAdaptiveMaxMinutes,
+      rssAdaptiveNoopThreshold,
       dailyHours: Math.round(dailyMs / 3_600_000),
       corpusHours: Math.round(corpusMs / 3_600_000),
       startupDelaySeconds: Math.round(startupDelayMs / 1000),

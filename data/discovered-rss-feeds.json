@@ -1,0 +1,752 @@
+[
+  {
+    "name": "United Kingdom Foreign Office",
+    "site_url": "https://www.gov.uk/government/organisations/foreign-commonwealth-development-office",
+    "feed_url": "https://www.gov.uk/search/news-and-communications.atom",
+    "category": "osint"
+  },
+  {
+    "name": "Inter-Parliamentary Union Parline",
+    "site_url": "https://data.ipu.org/",
+    "feed_url": "https://data.ipu.org/feed/",
+    "category": "legislation"
+  },
+  {
+    "name": "International Trade Centre Market Access Map",
+    "site_url": "https://www.macmap.org/",
+    "feed_url": "https://www.macmap.org/rss/",
+    "category": "osint"
+  },
+  {
+    "name": "France Transparency in Public Life Authority",
+    "site_url": "https://www.hatvp.fr/en/",
+    "feed_url": "https://www.hatvp.fr/feed/",
+    "category": "osint"
+  },
+  {
+    "name": "International IDEA",
+    "site_url": "https://www.idea.int/",
+    "feed_url": "https://www.idea.int/rss.xml",
+    "category": "geopolitics"
+  },
+  {
+    "name": "Mexico National Electoral Institute",
+    "site_url": "https://www.ine.mx/",
+    "feed_url": "https://www.ine.mx/feed/",
+    "category": "geopolitics"
+  },
+  {
+    "name": "Global Infrastructure Hub",
+    "site_url": "https://www.gihub.org/",
+    "feed_url": "https://www.gihub.org/rss/",
+    "category": "osint"
+  },
+  {
+    "name": "European Network of Gas Transmission Operators",
+    "site_url": "https://entsog.eu/",
+    "feed_url": "https://entsog.eu/rss.xml",
+    "category": "energy"
+  },
+  {
+    "name": "Global Energy Monitor",
+    "site_url": "https://globalenergymonitor.org/",
+    "feed_url": "https://globalenergymonitor.org/rss.xml",
+    "category": "energy"
+  },
+  {
+    "name": "Paris Memorandum of Understanding",
+    "site_url": "https://parismou.org/",
+    "feed_url": "https://parismou.org/rss.xml",
+    "category": "maritime"
+  },
+  {
+    "name": "International Civil Aviation Organization",
+    "site_url": "https://www.icao.int/",
+    "feed_url": "https://www.icao.int/rss.xml",
+    "category": "maritime"
+  },
+  {
+    "name": "EUROCONTROL",
+    "site_url": "https://www.eurocontrol.int/",
+    "feed_url": "https://www.eurocontrol.int/rss.xml",
+    "category": "maritime"
+  },
+  {
+    "name": "Statistics Canada Labour",
+    "site_url": "https://www.statcan.gc.ca/en/subjects-start/labour_",
+    "feed_url": "https://www.statcan.gc.ca/en/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "UN Population Fund",
+    "site_url": "https://www.unfpa.org/",
+    "feed_url": "https://www.unfpa.org/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "Internal Displacement Monitoring Centre",
+    "site_url": "https://www.internal-displacement.org/",
+    "feed_url": "https://www.internal-displacement.org/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "UN-Habitat",
+    "site_url": "https://unhabitat.org/",
+    "feed_url": "https://unhabitat.org/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "International Food Policy Research Institute",
+    "site_url": "https://www.ifpri.org/",
+    "feed_url": "https://www.ifpri.org/feed/",
+    "category": "agriculture"
+  },
+  {
+    "name": "UN Water",
+    "site_url": "https://www.unwater.org/",
+    "feed_url": "https://www.unwater.org/rss.xml",
+    "category": "agriculture"
+  },
+  {
+    "name": "Copernicus Climate Change Service",
+    "site_url": "https://climate.copernicus.eu/",
+    "feed_url": "https://climate.copernicus.eu/rss.xml",
+    "category": "disaster"
+  },
+  {
+    "name": "European Centre for Medium-Range Weather Forecasts",
+    "site_url": "https://www.ecmwf.int/",
+    "feed_url": "https://www.ecmwf.int/rss.xml",
+    "category": "disaster"
+  },
+  {
+    "name": "Crossref",
+    "site_url": "https://www.crossref.org/",
+    "feed_url": "https://www.crossref.org/feed.xml",
+    "category": "osint"
+  },
+  {
+    "name": "France National Archives",
+    "site_url": "https://www.archives-nationales.culture.gouv.fr/",
+    "feed_url": "https://www.archives-nationales.culture.gouv.fr/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "Indonesia Ministry of Defense",
+    "site_url": "https://www.kemhan.go.id/",
+    "feed_url": "https://www.kemhan.go.id/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "New Zealand Police",
+    "site_url": "https://www.police.govt.nz/",
+    "feed_url": "https://www.police.govt.nz/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "Argentina Federal Police",
+    "site_url": "https://www.argentina.gob.ar/policia-federal-argentina",
+    "feed_url": "https://www.argentina.gob.ar/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "Europol",
+    "site_url": "https://www.europol.europa.eu/",
+    "feed_url": "https://www.europol.europa.eu/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "European Banking Authority",
+    "site_url": "https://www.eba.europa.eu/",
+    "feed_url": "https://www.eba.europa.eu/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "European Securities and Markets Authority",
+    "site_url": "https://www.esma.europa.eu/",
+    "feed_url": "https://www.esma.europa.eu/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "Australia Treasury",
+    "site_url": "https://treasury.gov.au/",
+    "feed_url": "https://treasury.gov.au/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "Bank of Canada",
+    "site_url": "https://www.bankofcanada.ca/",
+    "feed_url": "https://www.bankofcanada.ca/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "Central Bank of Argentina",
+    "site_url": "https://www.bcra.gob.ar/",
+    "feed_url": "https://www.bcra.gob.ar/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "Nigeria Federal Ministry of Finance",
+    "site_url": "https://finance.gov.ng/",
+    "feed_url": "https://finance.gov.ng/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "Kenya National Treasury",
+    "site_url": "https://www.treasury.go.ke/",
+    "feed_url": "https://www.treasury.go.ke/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "Central Bank of Kenya",
+    "site_url": "https://www.centralbank.go.ke/",
+    "feed_url": "https://www.centralbank.go.ke/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "Ghana Ministry of Finance",
+    "site_url": "https://mofep.gov.gh/",
+    "feed_url": "https://mofep.gov.gh/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "Financial Stability Board",
+    "site_url": "https://www.fsb.org/",
+    "feed_url": "https://www.fsb.org/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "Courts and Tribunals Judiciary",
+    "site_url": "https://www.judiciary.uk/",
+    "feed_url": "https://www.judiciary.uk/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "Finland Judicial Administration",
+    "site_url": "https://oikeus.fi/en/",
+    "feed_url": "https://oikeus.fi/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "Estonian Courts",
+    "site_url": "https://www.kohus.ee/en",
+    "feed_url": "https://www.kohus.ee/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "Mexico Supreme Court of Justice",
+    "site_url": "https://www.scjn.gob.mx/",
+    "feed_url": "https://www.scjn.gob.mx/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "Kenya Judiciary",
+    "site_url": "https://judiciary.go.ke/",
+    "feed_url": "https://judiciary.go.ke/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "Nigeria Federal Ministry of Justice",
+    "site_url": "https://justice.gov.ng/",
+    "feed_url": "https://justice.gov.ng/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "International Court of Justice",
+    "site_url": "https://www.icj-cij.org/",
+    "feed_url": "https://www.icj-cij.org/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "International Criminal Court",
+    "site_url": "https://www.icc-cpi.int/",
+    "feed_url": "https://www.icc-cpi.int/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "Permanent Court of Arbitration",
+    "site_url": "https://pca-cpa.org/",
+    "feed_url": "https://pca-cpa.org/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "France Directorate-General for Enterprise",
+    "site_url": "https://www.entreprises.gouv.fr/",
+    "feed_url": "https://www.entreprises.gouv.fr/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "Italy National Institute of Statistics",
+    "site_url": "https://www.istat.it/en/",
+    "feed_url": "https://www.istat.it/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "Innovation Norway",
+    "site_url": "https://www.innovasjonnorge.no/en/",
+    "feed_url": "https://www.innovasjonnorge.no/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "Statistics Norway",
+    "site_url": "https://www.ssb.no/en",
+    "feed_url": "https://www.ssb.no/rss/",
+    "category": "archives"
+  },
+  {
+    "name": "Polish Investment and Trade Agency",
+    "site_url": "https://www.paih.gov.pl/en/",
+    "feed_url": "https://www.paih.gov.pl/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "Ukraine Ministry of Economy",
+    "site_url": "https://me.gov.ua/?lang=en-GB",
+    "feed_url": "https://me.gov.ua/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "UkraineInvest",
+    "site_url": "https://ukraineinvest.gov.ua/en/",
+    "feed_url": "https://ukraineinvest.gov.ua/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "State Statistics Service of Ukraine",
+    "site_url": "https://www.ukrstat.gov.ua/",
+    "feed_url": "https://www.ukrstat.gov.ua/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "Qatar Ministry of Commerce and Industry",
+    "site_url": "https://www.moci.gov.qa/en/",
+    "feed_url": "https://www.moci.gov.qa/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "Invest in Canada",
+    "site_url": "https://www.investcanada.ca/",
+    "feed_url": "https://www.investcanada.ca/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "Chile Ministry of Economy",
+    "site_url": "https://www.economia.gob.cl/",
+    "feed_url": "https://www.economia.gob.cl/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "InvestChile",
+    "site_url": "https://www.investchile.gob.cl/",
+    "feed_url": "https://www.investchile.gob.cl/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "Invest South Africa",
+    "site_url": "https://www.investsa.gov.za/",
+    "feed_url": "https://www.investsa.gov.za/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "Nigeria Federal Ministry of Industry, Trade and Investment",
+    "site_url": "https://fmiti.gov.ng/",
+    "feed_url": "https://fmiti.gov.ng/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "Kenya Ministry of Investments, Trade and Industry",
+    "site_url": "https://www.investmentpromotion.go.ke/",
+    "feed_url": "https://www.investmentpromotion.go.ke/rss.xml",
+    "category": "archives"
+  },
+  {
+    "name": "Ghana Investment Promotion Centre",
+    "site_url": "https://www.gipc.gov.gh/",
+    "feed_url": "https://www.gipc.gov.gh/feed/",
+    "category": "archives"
+  },
+  {
+    "name": "UK Research and Innovation",
+    "site_url": "https://www.ukri.org/",
+    "feed_url": "https://www.ukri.org/feed/",
+    "category": "osint"
+  },
+  {
+    "name": "National Centre for Scientific Research \u2014 CNRS",
+    "site_url": "https://www.cnrs.fr/en",
+    "feed_url": "https://www.cnrs.fr/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "National Institute of Health and Medical Research \u2014 Inserm",
+    "site_url": "https://www.inserm.fr/en/",
+    "feed_url": "https://www.inserm.fr/feed/",
+    "category": "osint"
+  },
+  {
+    "name": "French Institute of Petroleum and New Energies",
+    "site_url": "https://www.ifpenergiesnouvelles.com/",
+    "feed_url": "https://www.ifpenergiesnouvelles.com/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "French National Synchrotron \u2014 SOLEIL",
+    "site_url": "https://www.synchrotron-soleil.fr/en",
+    "feed_url": "https://www.synchrotron-soleil.fr/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "Leibniz Association",
+    "site_url": "https://www.leibniz-gemeinschaft.de/en/",
+    "feed_url": "https://www.leibniz-gemeinschaft.de/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "National Research Council of Italy",
+    "site_url": "https://www.cnr.it/en",
+    "feed_url": "https://www.cnr.it/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "Italian National Institute for Nuclear Physics",
+    "site_url": "https://www.infn.it/en/",
+    "feed_url": "https://www.infn.it/feed/",
+    "category": "osint"
+  },
+  {
+    "name": "Italian Space Agency",
+    "site_url": "https://www.asi.it/en/",
+    "feed_url": "https://www.asi.it/feed/",
+    "category": "osint"
+  },
+  {
+    "name": "Spanish National Research Council",
+    "site_url": "https://www.csic.es/en",
+    "feed_url": "https://www.csic.es/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "Centre for Industrial Technological Development",
+    "site_url": "https://www.cdti.es/",
+    "feed_url": "https://www.cdti.es/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "Netherlands Institute for Space Research",
+    "site_url": "https://www.sron.nl/",
+    "feed_url": "https://www.sron.nl/feed/",
+    "category": "osint"
+  },
+  {
+    "name": "ETH Domain",
+    "site_url": "https://ethrat.ch/en/",
+    "feed_url": "https://ethrat.ch/feed/",
+    "category": "osint"
+  },
+  {
+    "name": "Paul Scherrer Institute",
+    "site_url": "https://www.psi.ch/en",
+    "feed_url": "https://www.psi.ch/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "Institute for Energy Technology Norway",
+    "site_url": "https://ife.no/en/",
+    "feed_url": "https://ife.no/feed/",
+    "category": "osint"
+  },
+  {
+    "name": "VTT Technical Research Centre of Finland",
+    "site_url": "https://www.vttresearch.com/en",
+    "feed_url": "https://www.vttresearch.com/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "National Institute for Earth Science and Disaster Resilience",
+    "site_url": "https://www.bosai.go.jp/e/",
+    "feed_url": "https://www.bosai.go.jp/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "Council of Scientific and Industrial Research",
+    "site_url": "https://www.csir.res.in/",
+    "feed_url": "https://www.csir.res.in/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "Department of Atomic Energy",
+    "site_url": "https://dae.gov.in/",
+    "feed_url": "https://dae.gov.in/feed/",
+    "category": "osint"
+  },
+  {
+    "name": "Australian Nuclear Science and Technology Organisation",
+    "site_url": "https://www.ansto.gov.au/",
+    "feed_url": "https://www.ansto.gov.au/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "National Institute of Water and Atmospheric Research",
+    "site_url": "https://niwa.co.nz/",
+    "feed_url": "https://niwa.co.nz/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "Natural Resources Canada",
+    "site_url": "https://natural-resources.canada.ca/",
+    "feed_url": "https://natural-resources.canada.ca/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "Canadian Nuclear Laboratories",
+    "site_url": "https://www.cnl.ca/",
+    "feed_url": "https://www.cnl.ca/feed/",
+    "category": "osint"
+  },
+  {
+    "name": "Brazilian Center for Research in Energy and Materials",
+    "site_url": "https://cnpem.br/en/",
+    "feed_url": "https://cnpem.br/feed/",
+    "category": "osint"
+  },
+  {
+    "name": "Israel Innovation Authority",
+    "site_url": "https://innovationisrael.org.il/en/",
+    "feed_url": "https://innovationisrael.org.il/feed/",
+    "category": "osint"
+  },
+  {
+    "name": "Mohammed Bin Rashid Space Centre",
+    "site_url": "https://www.mbrsc.ae/",
+    "feed_url": "https://www.mbrsc.ae/feed/",
+    "category": "osint"
+  },
+  {
+    "name": "Council for Scientific and Industrial Research",
+    "site_url": "https://www.csir.co.za/",
+    "feed_url": "https://www.csir.co.za/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "South African Nuclear Energy Corporation",
+    "site_url": "https://www.necsa.co.za/",
+    "feed_url": "https://www.necsa.co.za/feed/",
+    "category": "osint"
+  },
+  {
+    "name": "South African National Space Agency",
+    "site_url": "https://www.sansa.org.za/",
+    "feed_url": "https://www.sansa.org.za/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "South African Environmental Observation Network",
+    "site_url": "https://www.saeon.ac.za/",
+    "feed_url": "https://www.saeon.ac.za/feed/",
+    "category": "osint"
+  },
+  {
+    "name": "South African National Biodiversity Institute",
+    "site_url": "https://www.sanbi.org/",
+    "feed_url": "https://www.sanbi.org/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "Nature",
+    "site_url": "https://www.nature.com/",
+    "feed_url": "https://www.nature.com/nature.rss",
+    "category": "science"
+  },
+  {
+    "name": "European Organization for Nuclear Research \u2014 CERN",
+    "site_url": "https://home.cern/",
+    "feed_url": "https://home.cern/feed/",
+    "category": "science"
+  },
+  {
+    "name": "European Southern Observatory",
+    "site_url": "https://www.eso.org/",
+    "feed_url": "https://www.eso.org/rss.xml",
+    "category": "science"
+  },
+  {
+    "name": "International Union of Pure and Applied Physics",
+    "site_url": "https://iupap.org/",
+    "feed_url": "https://iupap.org/rss.xml",
+    "category": "science"
+  },
+  {
+    "name": "International Union of Pure and Applied Chemistry",
+    "site_url": "https://iupac.org/",
+    "feed_url": "https://iupac.org/feed/",
+    "category": "science"
+  },
+  {
+    "name": "International Union of Biological Sciences",
+    "site_url": "https://iubs.org/",
+    "feed_url": "https://iubs.org/feed/",
+    "category": "science"
+  },
+  {
+    "name": "Intergovernmental Panel on Climate Change",
+    "site_url": "https://www.ipcc.ch/",
+    "feed_url": "https://www.ipcc.ch/feed/",
+    "category": "science"
+  },
+  {
+    "name": "ITER",
+    "site_url": "https://www.iter.org/",
+    "feed_url": "https://www.iter.org/rss.xml",
+    "category": "science"
+  },
+  {
+    "name": "Square Kilometre Array Observatory",
+    "site_url": "https://www.skao.int/",
+    "feed_url": "https://www.skao.int/rss.xml",
+    "category": "science"
+  },
+  {
+    "name": "National Oceanography Centre",
+    "site_url": "https://noc.ac.uk/",
+    "feed_url": "https://noc.ac.uk/rss.xml",
+    "category": "maritime"
+  },
+  {
+    "name": "British Oceanographic Data Centre",
+    "site_url": "https://www.bodc.ac.uk/",
+    "feed_url": "https://www.bodc.ac.uk/feed.xml",
+    "category": "maritime"
+  },
+  {
+    "name": "UK Hydrographic Office",
+    "site_url": "https://www.admiralty.co.uk/",
+    "feed_url": "https://www.admiralty.co.uk/rss.xml",
+    "category": "maritime"
+  },
+  {
+    "name": "French Hydrographic and Oceanographic Service",
+    "site_url": "https://www.shom.fr/",
+    "feed_url": "https://www.shom.fr/rss.xml",
+    "category": "maritime"
+  },
+  {
+    "name": "Italy National Institute of Oceanography and Applied Geophysics",
+    "site_url": "https://www.ogs.it/en",
+    "feed_url": "https://www.ogs.it/rss.xml",
+    "category": "maritime"
+  },
+  {
+    "name": "Spanish Institute of Oceanography",
+    "site_url": "https://www.ieo.es/",
+    "feed_url": "https://www.ieo.es/feed/",
+    "category": "maritime"
+  },
+  {
+    "name": "Geological Survey of Finland \u2014 Marine Geology",
+    "site_url": "https://www.gtk.fi/en/",
+    "feed_url": "https://www.gtk.fi/feed/",
+    "category": "maritime"
+  },
+  {
+    "name": "Integrated Marine Observing System",
+    "site_url": "https://imos.org.au/",
+    "feed_url": "https://imos.org.au/feed/",
+    "category": "maritime"
+  },
+  {
+    "name": "International Seabed Authority",
+    "site_url": "https://isa.org.jm/",
+    "feed_url": "https://isa.org.jm/rss.xml",
+    "category": "maritime"
+  },
+  {
+    "name": "Global Ocean Observing System",
+    "site_url": "https://goosocean.org/",
+    "feed_url": "https://goosocean.org/feed/",
+    "category": "maritime"
+  },
+  {
+    "name": "Argo Ocean Observing Program",
+    "site_url": "https://argo.ucsd.edu/",
+    "feed_url": "https://argo.ucsd.edu/feed/",
+    "category": "maritime"
+  },
+  {
+    "name": "European Marine Observation and Data Network",
+    "site_url": "https://emodnet.ec.europa.eu/",
+    "feed_url": "https://emodnet.ec.europa.eu/rss.xml",
+    "category": "maritime"
+  },
+  {
+    "name": "Copernicus Marine Service",
+    "site_url": "https://marine.copernicus.eu/",
+    "feed_url": "https://marine.copernicus.eu/rss.xml",
+    "category": "maritime"
+  },
+  {
+    "name": "Canadian Securities Administrators \u2014 Crypto Assets",
+    "site_url": "https://www.securities-administrators.ca/",
+    "feed_url": "https://www.securities-administrators.ca/feed/",
+    "category": "crypto"
+  },
+  {
+    "name": "Cambridge Digital Assets Programme",
+    "site_url": "https://www.jbs.cam.ac.uk/faculty-research/centres/alternative-finance/",
+    "feed_url": "https://www.jbs.cam.ac.uk/feed/",
+    "category": "crypto"
+  },
+  {
+    "name": "Atlantic Council CBDC Tracker",
+    "site_url": "https://www.atlanticcouncil.org/cbdctracker/",
+    "feed_url": "https://www.atlanticcouncil.org/feed/",
+    "category": "crypto"
+  },
+  {
+    "name": "Global Agriculture and Food Security Program",
+    "site_url": "https://www.gafspfund.org/",
+    "feed_url": "https://www.gafspfund.org/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "British Geological Survey",
+    "site_url": "https://www.bgs.ac.uk/",
+    "feed_url": "https://www.bgs.ac.uk/feed/",
+    "category": "osint"
+  },
+  {
+    "name": "European Telecommunications Standards Institute",
+    "site_url": "https://www.etsi.org/",
+    "feed_url": "https://www.etsi.org/feed/",
+    "category": "osint"
+  },
+  {
+    "name": "Germany Federal Network Agency",
+    "site_url": "https://www.bundesnetzagentur.de/EN/",
+    "feed_url": "https://www.bundesnetzagentur.de/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "European Patent Office",
+    "site_url": "https://www.epo.org/",
+    "feed_url": "https://www.epo.org/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "IEEE Standards Association",
+    "site_url": "https://standards.ieee.org/",
+    "feed_url": "https://standards.ieee.org/feed/",
+    "category": "osint"
+  },
+  {
+    "name": "UN Environment Programme",
+    "site_url": "https://www.unep.org/",
+    "feed_url": "https://www.unep.org/rss.xml",
+    "category": "osint"
+  },
+  {
+    "name": "Global Carbon Atlas",
+    "site_url": "https://globalcarbonatlas.org/",
+    "feed_url": "https://globalcarbonatlas.org/feed/",
+    "category": "osint"
+  }
+]

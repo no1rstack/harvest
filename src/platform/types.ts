@@ -26,6 +26,8 @@ export interface PlatformFeedsConfig {
   delegateFromJudicium: boolean;
   layersIntervalMinutes: number;
   rssIntervalMinutes: number;
+  rssAdaptiveMaxMinutes: number;
+  rssAdaptiveNoopThreshold: number;
   dailyIntervalHours: number;
   startupDelaySeconds: number;
 }

@@ -77,7 +77,11 @@ export async function collectDatabaseStats(config: DatabaseConfig, prior?: Recor
     });
     return { connected: true, tables };
   } catch (err: unknown) {
-    return { connected: false, error: (err as Error).message, tables: [] as Array<{ table: string; live: TableLiveStats }> };
+    const msg = (err as Error).message;
+    const clean = /password authentication failed/i.test(msg)
+      ? 'unreachable — database requires authentication (not configured locally)'
+      : msg.length > 80 ? msg.slice(0, 80) + '…' : msg;
+    return { connected: false, error: clean, tables: [] as Array<{ table: string; live: TableLiveStats }> };
   } finally {
     await pool.end().catch(() => undefined);
   }

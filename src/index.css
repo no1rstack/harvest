@@ -14,14 +14,14 @@
 :root {
   --radius: 0;
 
-  /* Core noir surfaces — cool near-black void (Palantir-grade). A whisper of
-     blue chroma + a slight card lift give depth without breaking monochrome. */
-  --noir-bg: oklch(0.145 0.008 245);
-  --noir-surface: oklch(0.205 0.009 245);
-  --noir-elevated: oklch(0.265 0.011 245);
-  --noir-card: oklch(0.16 0.008 245);
-  --noir-border: oklch(0.32 0.012 245 / 0.6);
-  --noir-border-strong: oklch(0.46 0.014 245 / 0.5);
+  /* Core noir surfaces — cool dark with gentle blue chroma.
+     Subtle luminance lift keeps depth while reducing eye strain. */
+  --noir-bg: oklch(17.888% 0.01042 276.381);
+  --noir-surface: oklch(24.212% 0.00888 255.649);
+  --noir-elevated: oklch(30.063% 0.01168 264.412);
+  --noir-card: oklch(19.535% 0.00868 264.378);
+  --noir-border: oklch(0.35 0.011 245 / 0.6);
+  --noir-border-strong: oklch(0.48 0.013 245 / 0.5);
   --noir-accent: oklch(0.985 0 0);
   --noir-muted: oklch(0.72 0 0);
   --noir-faint: oklch(0.62 0 0);
@@ -96,32 +96,35 @@
    utilities re-theme automatically. Dark remains the default & unchanged.
 ----------------------------------- */
 :root[data-theme="light"] {
-  --noir-bg: oklch(0.985 0.003 250);
-  --noir-surface: #ffffff;
-  --noir-elevated: #ffffff;
-  --noir-card: #ffffff;
-  --noir-border: oklch(0.28 0.02 255 / 0.14);
-  --noir-border-strong: oklch(0.28 0.02 255 / 0.26);
-  --noir-accent: oklch(0.24 0.02 260);
-  --noir-muted: oklch(0.46 0.015 260);
-  --noir-faint: oklch(0.58 0.012 260);
-  --noir-success: oklch(0.52 0.12 150);
-  --noir-error: #dc2626;
-  --noir-warning: #b45309;
-  --noir-info: oklch(0.46 0.015 260);
-  --noir-accent-cyan: oklch(0.55 0.15 233);
-  --noir-accent-cyan-soft: oklch(0.55 0.15 233 / 0.12);
+  /* Tonal gray scale — each surface has a distinct temperature and density.
+     Warm undertones on outer layers, cool undertones on inner layers for
+     a natural architectural depth (darker surfaces recede, lighter advance). */
+  --noir-bg: oklch(96.81% 0.00817 278.543);
+  --noir-surface: oklch(91.453% 0.00819 286.055);
+  --noir-elevated: #d6d7de;
+  --noir-card: oklch(78.35% 0.00428 285.997);
+  --noir-border: oklch(0.48 0.02 250 / 0.24);
+  --noir-border-strong: oklch(0.48 0.02 250 / 0.40);
+  --noir-accent: oklch(0.18 0.028 260);
+  --noir-muted: oklch(0.38 0.02 260);
+  --noir-faint: oklch(0.50 0.015 260);
+  --noir-success: oklch(0.45 0.18 145);
+  --noir-error: #b91c1c;
+  --noir-warning: #92400e;
+  --noir-info: oklch(0.38 0.02 260);
+  --noir-accent-cyan: oklch(0.50 0.18 233);
+  --noir-accent-cyan-soft: oklch(0.50 0.18 233 / 0.10);
   --noir-link: var(--noir-accent-cyan);
-  --noir-alert: #dc2626;
+  --noir-alert: #b91c1c;
 
-  --primary: oklch(0.24 0.02 260);
+  --primary: oklch(0.18 0.028 260);
   --primary-foreground: #ffffff;
-  --ring: oklch(0.55 0.15 233 / 0.5);
-  --selection-background: oklch(0.55 0.15 233 / 0.2);
+  --ring: oklch(0.50 0.18 233 / 0.45);
+  --selection-background: oklch(0.50 0.18 233 / 0.18);
 
-  /* Ink flips to near-black so text-ink/bg-ink/border-ink read on light surfaces. */
-  --ink: #0f172a;
-  --ink-rgb: 15 23 42;
+  /* Strong text — deeper slate for crisp readability on light surfaces. */
+  --ink: #0b1120;
+  --ink-rgb: 11 17 32;
 
   color-scheme: light;
 }

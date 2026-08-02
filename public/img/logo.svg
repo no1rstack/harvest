@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
-  <title id="title">Triangle logo</title>
-  <desc id="desc">A geometric triangular mark with an inverted triangular opening and a break on the right side.</desc>
-  <path fill="#111111" fill-rule="evenodd" d="
-    M256 30 20 482h472L256 30Zm0 370-92-178h184L256 400Z
-    M348 252h92v30h-92Z
-  "/>
-</svg>

@@ -46,6 +46,8 @@ import {
   filterWorldMonitorCatalog,
   worldMonitorFeedToSeed,
 } from '../feeds/worldMonitorFeedCatalog.js';
+import { fetchAndScrape } from '../feeds/urlScraper.js';
+import { FRESHRSS_SCRAPE_CONFIGS, freshRssConfigToFeedSeed } from '../feeds/freshRssConfigs.js';
 import { loadPlatformConfig } from '../platform/config.js';
 import { resolveCommunityFeedsConfig } from '../modules/community-feeds/config.js';
 import { getCommunityFeedsContract } from '../modules/registry.js';
@@ -371,6 +373,32 @@ export function registerFeedsRoutes(app: Express): void {
     }
   });
 
+  // FreshRSS XPath scraping configs catalog
+  app.get(`${base}/sources/catalog/freshrss`, async (_req, res) => {
+    try {
+      res.json({
+        pack: 'freshrss',
+        total: FRESHRSS_SCRAPE_CONFIGS.length,
+        feeds: FRESHRSS_SCRAPE_CONFIGS.map(freshRssConfigToFeedSeed),
+        note: 'FreshRSS-compatible XPath scraping configs for sites without native RSS feeds.',
+      });
+    } catch (err: unknown) {
+      res.status(500).json({ error: (err as Error).message, feeds: [] });
+    }
+  });
+
+  // Scrape a URL using regex/HTML extraction
+  app.get(`${base}/scrape`, async (req, res) => {
+    try {
+      const url = String(req.query.url || '').trim();
+      if (!url) return res.status(400).json({ error: 'url is required' });
+      const result = await fetchAndScrape(url);
+      res.json(result);
+    } catch (err: unknown) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
   app.post(`${base}/sources/import`, async (req, res) => {
     try {
       const pool = poolOr503(res);
@@ -383,6 +411,7 @@ export function registerFeedsRoutes(app: Express): void {
         feedUrl: string;
         category: string;
         discoveredVia: string;
+        scrapeConfig?: Record<string, string> | null;
       }> = [];
 
       if (pack === 'crucix') {
@@ -438,8 +467,20 @@ export function registerFeedsRoutes(app: Express): void {
             }
           }
         }
+      } else if (pack === 'freshrss') {
+        for (const cfg of FRESHRSS_SCRAPE_CONFIGS.slice(0, limit)) {
+          const seed = freshRssConfigToFeedSeed(cfg);
+          seeds.push({
+            name: seed.name,
+            siteUrl: seed.siteUrl,
+            feedUrl: seed.feedUrl,
+            category: seed.category,
+            discoveredVia: seed.discoveredVia,
+            scrapeConfig: seed.scrapeConfig,
+          });
+        }
       } else {
-        return res.status(400).json({ error: 'pack must be crucix, worldmonitor, or legal' });
+        return res.status(400).json({ error: 'pack must be crucix, worldmonitor, legal, or freshrss' });
       }
 
       const seen = new Set<string>();

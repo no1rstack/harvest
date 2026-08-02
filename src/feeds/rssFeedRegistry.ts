@@ -17,6 +17,12 @@ export interface CommunityFeedSource {
   lastCheckedAt?: string;
   lastOkAt?: string;
   lastError?: string;
+  /** Adaptive pull interval in minutes — starts at base, doubles on no-ops up to max */
+  adaptiveIntervalMinutes: number;
+  /** Consecutive pulls that found 0 new items */
+  consecutiveNoopCount: number;
+  /** FreshRSS-compatible XPath scraping config for sites without RSS */
+  scrapeConfig?: Record<string, string> | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -34,6 +40,8 @@ export const FEED_SOURCES_DDL = `
     last_checked_at TIMESTAMPTZ,
     last_ok_at TIMESTAMPTZ,
     last_error TEXT,
+    adaptive_interval_minutes INT DEFAULT 15,
+    consecutive_noop_count INT DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL
   );
@@ -62,6 +70,9 @@ function rowToSource(row: Record<string, unknown>): CommunityFeedSource {
     lastCheckedAt: row.last_checked_at ? new Date(String(row.last_checked_at)).toISOString() : undefined,
     lastOkAt: row.last_ok_at ? new Date(String(row.last_ok_at)).toISOString() : undefined,
     lastError: row.last_error ? String(row.last_error) : undefined,
+    adaptiveIntervalMinutes: Number(row.adaptive_interval_minutes ?? 15),
+    consecutiveNoopCount: Number(row.consecutive_noop_count ?? 0),
+    scrapeConfig: row.scrape_config as Record<string, string> | null | undefined,
     createdAt: new Date(String(row.created_at)).toISOString(),
     updatedAt: new Date(String(row.updated_at)).toISOString(),
   };
@@ -96,6 +107,7 @@ export async function upsertFeedSource(
     enabled?: boolean;
     autoPull?: boolean;
     discoveredVia?: string;
+    scrapeConfig?: Record<string, string> | null;
   },
 ): Promise<CommunityFeedSource> {
   await ensureFeedSourcesSchema(pool);
@@ -103,8 +115,8 @@ export async function upsertFeedSource(
   const id = input.id || stableFeedSourceId(input.feedUrl);
   const result = await pool.query(
     `INSERT INTO community_feed_sources
-      (id, name, site_url, feed_url, category, enabled, auto_pull, discovered_via, created_at, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9)
+      (id, name, site_url, feed_url, category, enabled, auto_pull, discovered_via, scrape_config, created_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)
      ON CONFLICT (feed_url) DO UPDATE SET
        name = EXCLUDED.name,
        site_url = EXCLUDED.site_url,
@@ -112,6 +124,7 @@ export async function upsertFeedSource(
        enabled = EXCLUDED.enabled,
        auto_pull = EXCLUDED.auto_pull,
        discovered_via = EXCLUDED.discovered_via,
+       scrape_config = EXCLUDED.scrape_config,
        updated_at = EXCLUDED.updated_at
      RETURNING *`,
     [
@@ -123,6 +136,7 @@ export async function upsertFeedSource(
       input.enabled !== false,
       input.autoPull !== false,
       input.discoveredVia || 'manual',
+      input.scrapeConfig ? JSON.stringify(input.scrapeConfig) : null,
       now,
     ],
   );
@@ -166,6 +180,75 @@ export async function patchFeedSource(
     values,
   );
   return result.rows[0] ? rowToSource(result.rows[0] as Record<string, unknown>) : null;
+}
+
+export async function listDueFeedSources(
+  pool: Pool,
+  options?: { baseIntervalMinutes?: number; maxIntervalMinutes?: number },
+): Promise<CommunityFeedSource[]> {
+  await ensureFeedSourcesSchema(pool);
+  // Only return feeds whose adaptive interval has elapsed since last check.
+  // Feeds that have never been checked are always due.
+  const result = await pool.query(
+    `SELECT * FROM community_feed_sources
+     WHERE enabled = true AND auto_pull = true
+       AND (last_checked_at IS NULL
+            OR last_checked_at + COALESCE(adaptive_interval_minutes, 15) * INTERVAL '1 minute' <= NOW())
+     ORDER BY last_checked_at ASC NULLS FIRST`,
+  );
+  return result.rows.map((row) => rowToSource(row as Record<string, unknown>));
+}
+
+/**
+ * After pulling a feed, adjust its adaptive cadence.
+ * - If new items were found: reset consecutive_noop_count to 0, halve the interval (min = baseIntervalMinutes).
+ * - If 0 new items: increment consecutive_noop_count. After threshold consecutive no-ops, double the interval (max = maxIntervalMinutes).
+ */
+export async function adjustFeedCadence(
+  pool: Pool,
+  id: string,
+  newItemCount: number,
+  options?: { baseIntervalMinutes?: number; maxIntervalMinutes?: number; noopThreshold?: number },
+): Promise<void> {
+  await ensureFeedSourcesSchema(pool);
+  const baseMin = options?.baseIntervalMinutes ?? 15;
+  const maxMin = options?.maxIntervalMinutes ?? 1440;
+  const threshold = options?.noopThreshold ?? 3;
+
+  if (newItemCount > 0) {
+    // Feed is producing — reset and stay at base or halve toward base
+    await pool.query(
+      `UPDATE community_feed_sources
+       SET consecutive_noop_count = 0,
+           adaptive_interval_minutes = GREATEST($2, adaptive_interval_minutes / 2),
+           last_checked_at = NOW(),
+           last_ok_at = NOW()
+       WHERE id = $1`,
+      [id, baseMin],
+    );
+  } else {
+    // No new items — increment noop counter, maybe double interval
+    const result = await pool.query(
+      `UPDATE community_feed_sources
+       SET consecutive_noop_count = consecutive_noop_count + 1,
+           adaptive_interval_minutes = CASE
+             WHEN consecutive_noop_count + 1 >= $2 THEN LEAST($3, adaptive_interval_minutes * 2)
+             ELSE adaptive_interval_minutes
+           END,
+           last_checked_at = NOW()
+       WHERE id = $1
+       RETURNING consecutive_noop_count, adaptive_interval_minutes`,
+      [id, threshold, maxMin],
+    );
+    if (result.rows.length > 0) {
+      const row = result.rows[0];
+      const noops = Number(row.consecutive_noop_count);
+      const interval = Number(row.adaptive_interval_minutes);
+      if (noops >= threshold && interval > baseMin) {
+        console.log(`[harvest-feeds] Feed "${id}" slowed to ${interval}m after ${noops} no-ops`);
+      }
+    }
+  }
 }
 
 export async function deleteFeedSource(pool: Pool, id: string): Promise<boolean> {

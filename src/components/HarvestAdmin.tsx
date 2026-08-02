@@ -7,9 +7,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Radar, RefreshCw, Play, FileText, AlertTriangle, Check, Clock,
   Database, Crosshair, ListTree, Terminal, LogIn, LogOut, Brain, Settings, Layers, Rss,
+  Sun, Moon, Globe, BookOpen,
 } from 'lucide-react';
 import { ArchitectureExplorer } from './ArchitectureExplorer';
 import { FeedIntelligenceExplorer } from './FeedIntelligenceExplorer';
+import { SourceInventoryPanel } from './SourceInventoryPanel';
+import { EnrichmentPanel } from './EnrichmentPanel';
+import { RssSourcesPanel } from './RssSourcesPanel';
 import { cn } from '../types';
 
 interface HarvestAuthState {
@@ -117,7 +121,7 @@ function statusTone(status: string) {
 
 export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) => {
   const [auth, setAuth] = useState<HarvestAuthState | null>(null);
-  const [tab, setTab] = useState<'ops' | 'findings' | 'registry' | 'graph' | 'intelligence' | 'feeds' | 'platform' | 'architecture'>('findings');
+  const [tab, setTab] = useState<'ops' | 'findings' | 'registry' | 'graph' | 'intelligence' | 'feeds' | 'platform' | 'architecture' | 'sources' | 'enrichment' | 'rss-sources'>('findings');
   const [data, setData] = useState<HarvestStatus | null>(null);
   const [targetsText, setTargetsText] = useState('');
   const [targetsDirty, setTargetsDirty] = useState(false);
@@ -196,6 +200,29 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
   const [platformStatus, setPlatformStatus] = useState<Record<string, unknown> | null>(null);
   const [platformConfig, setPlatformConfig] = useState<Record<string, unknown> | null>(null);
   const [platformBusy, setPlatformBusy] = useState<string | null>(null);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('harvest-theme');
+      if (stored === 'light' || stored === 'dark') return stored;
+    }
+    return 'dark';
+  });
+
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('harvest-theme', next);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  }, [theme]);
 
   const loadPlatform = useCallback(async () => {
     setPlatformBusy('load');
@@ -670,17 +697,17 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
   }, [data]);
 
   return (
-    <div className={cn('min-h-dvh w-screen bg-[#050508] text-ink flex flex-col', className)}>
-      <header className="shrink-0 border-b border-ink/[0.06] bg-[#06060A] px-6 py-4 flex items-center justify-between gap-4">
+    <div className={cn('min-h-dvh w-screen bg-noir-bg text-ink flex flex-col', className)}>
+      <header className="shrink-0 border-b border-ink/[0.06] bg-noir-surface px-6 py-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Radar size={18} className="text-ink/55" />
+          <img src="/logo.svg" alt="Collection Platform" className="h-6 w-6" />
           <div>
             <div className="text-sm font-semibold tracking-wide text-ink/80">Collection Platform</div>
             <div className="text-[10px] uppercase tracking-[0.22em] text-ink/40">
               Registry · observations · ops
             </div>
           </div>
-          {auth?.authenticated && (
+          {(!auth?.required || auth?.authenticated) && (
             <div className="ml-4 flex items-center gap-1 border border-ink/[0.08] p-0.5">
               <button
                 type="button"
@@ -766,6 +793,39 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 <Settings size={12} className="inline mr-1" />
                 Platform
               </button>
+              <button
+                type="button"
+                onClick={() => setTab('sources')}
+                className={cn(
+                  'px-3 py-1 text-[11px]',
+                  tab === 'sources' ? 'bg-ink/[0.08] text-ink/80' : 'text-ink/40 hover:text-ink/65',
+                )}
+              >
+                <Globe size={12} className="inline mr-1" />
+                Sources
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab('enrichment')}
+                className={cn(
+                  'px-3 py-1 text-[11px]',
+                  tab === 'enrichment' ? 'bg-ink/[0.08] text-ink/80' : 'text-ink/40 hover:text-ink/65',
+                )}
+              >
+                <BookOpen size={12} className="inline mr-1" />
+                Enrichment
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab('rss-sources')}
+                className={cn(
+                  'px-3 py-1 text-[11px]',
+                  tab === 'rss-sources' ? 'bg-ink/[0.08] text-ink/80' : 'text-ink/40 hover:text-ink/65',
+                )}
+              >
+                <Rss size={12} className="inline mr-1" />
+                RSS Sources
+              </button>
             </div>
           )}
         </div>
@@ -781,12 +841,20 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
             </span>
           )}
           <button
+            type="button"
+            onClick={toggleTheme}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-ink/[0.08] text-ink/55 hover:text-ink/80"
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? <Sun size={12} /> : <Moon size={12} />}
+          </button>
+          <button
             onClick={() => void load()}
             className="flex items-center gap-1.5 px-3 py-1.5 border border-ink/[0.08] text-ink/55 hover:text-ink/80"
           >
             <RefreshCw size={12} /> Refresh
           </button>
-          {auth?.authenticated ? (
+          {auth?.required && (auth?.authenticated ? (
             <a
               href="/api/harvest/auth/logout"
               className="flex items-center gap-1.5 px-3 py-1.5 border border-ink/[0.08] text-ink/55 hover:text-ink/80"
@@ -800,23 +868,23 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
             >
               <LogIn size={12} /> Login
             </a>
-          )}
+          ))}
         </div>
       </header>
 
       <main className="flex-1 overflow-y-auto p-6 space-y-6 max-w-[1400px] w-full mx-auto">
         {auth?.required && !auth.authenticated ? (
           <div className="border border-ink/[0.08] bg-ink/[0.02] p-8 max-w-lg mx-auto text-center space-y-4">
-            <Radar size={28} className="mx-auto text-ink/40" />
+            <img src="/logo.svg" alt="Collection Platform" className="h-10 w-10 mx-auto" />
             <h1 className="text-lg text-ink/80">Sign in required</h1>
             <p className="text-[12px] text-ink/45">
-              Collection Platform is gated by Keycloak (<span className="text-ink/60">auth.noirstack.com</span>).
+              Authentication required to access the Collection Platform.
             </p>
             <a
               href="/api/harvest/auth/login"
               className="inline-flex items-center gap-2 px-4 py-2 border border-ink/20 text-ink/75 hover:bg-ink/[0.04]"
             >
-              <LogIn size={14} /> Continue with Keycloak
+              <LogIn size={14} /> Sign in
             </a>
           </div>
         ) : (
@@ -845,7 +913,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                   onChange={(e) => setFindingsQ(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && void loadFindings(0)}
                   placeholder="value, title, label…"
-                  className="bg-[#0a0a0f] border border-ink/[0.08] px-3 py-1.5 text-[12px] text-ink/70 normal-case tracking-normal"
+                  className="bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[12px] text-ink/70 normal-case tracking-normal"
                 />
               </label>
               <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-ink/40">
@@ -853,7 +921,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 <select
                   value={findingsSource}
                   onChange={(e) => setFindingsSource(e.target.value)}
-                  className="bg-[#0a0a0f] border border-ink/[0.08] px-2 py-1.5 text-[12px] text-ink/70 normal-case tracking-normal min-w-[9rem]"
+                  className="bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[12px] text-ink/70 normal-case tracking-normal min-w-[9rem]"
                 >
                   <option value="">All</option>
                   {(data?.bySource || []).map((s) => (
@@ -866,7 +934,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 <select
                   value={findingsType}
                   onChange={(e) => setFindingsType(e.target.value)}
-                  className="bg-[#0a0a0f] border border-ink/[0.08] px-2 py-1.5 text-[12px] text-ink/70 normal-case tracking-normal min-w-[9rem]"
+                  className="bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[12px] text-ink/70 normal-case tracking-normal min-w-[9rem]"
                 >
                   <option value="">All</option>
                   {(data?.byEntityType || []).map((s) => (
@@ -879,7 +947,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 <select
                   value={findingsConnector}
                   onChange={(e) => setFindingsConnector(e.target.value)}
-                  className="bg-[#0a0a0f] border border-ink/[0.08] px-2 py-1.5 text-[12px] text-ink/70 normal-case tracking-normal min-w-[9rem]"
+                  className="bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[12px] text-ink/70 normal-case tracking-normal min-w-[9rem]"
                 >
                   <option value="">All</option>
                   {HARVESTERS.map((h) => (
@@ -892,7 +960,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 <select
                   value={findingsProduct}
                   onChange={(e) => setFindingsProduct(e.target.value)}
-                  className="bg-[#0a0a0f] border border-ink/[0.08] px-2 py-1.5 text-[12px] text-ink/70 normal-case tracking-normal min-w-[8rem]"
+                  className="bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[12px] text-ink/70 normal-case tracking-normal min-w-[8rem]"
                 >
                   <option value="">All</option>
                   <option value="shared">shared</option>
@@ -906,7 +974,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                   value={findingsWorkflowRunId}
                   onChange={(e) => setFindingsWorkflowRunId(e.target.value)}
                   placeholder="run-…"
-                  className="bg-[#0a0a0f] border border-ink/[0.08] px-3 py-1.5 text-[12px] font-mono text-ink/70 normal-case tracking-normal"
+                  className="bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[12px] font-mono text-ink/70 normal-case tracking-normal"
                 />
               </label>
               <button
@@ -1046,7 +1114,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                   </div>
                 )}
                 {selectedFinding.raw != null && (
-                  <pre className="max-h-48 overflow-auto bg-[#0a0a0f] border border-ink/[0.06] p-3 text-[10px] text-ink/45 font-mono">
+                  <pre className="max-h-48 overflow-auto bg-noir-bg border border-ink/[0.06] p-3 text-[10px] text-ink/45 font-mono">
                     {JSON.stringify(selectedFinding.raw, null, 2)}
                   </pre>
                 )}
@@ -1118,7 +1186,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                   value={targetForm.value}
                   onChange={(e) => setTargetForm((f) => ({ ...f, value: e.target.value }))}
                   placeholder="noirstack.com"
-                  className="w-full bg-[#0a0a0f] border border-ink/[0.08] px-2 py-1.5 text-[11px] font-mono"
+                  className="w-full bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[11px] font-mono"
                 />
               </label>
               <label className="space-y-1">
@@ -1126,7 +1194,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 <input
                   value={targetForm.product}
                   onChange={(e) => setTargetForm((f) => ({ ...f, product: e.target.value }))}
-                  className="w-full bg-[#0a0a0f] border border-ink/[0.08] px-2 py-1.5 text-[11px]"
+                  className="w-full bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[11px]"
                 />
               </label>
               <label className="space-y-1 md:col-span-2">
@@ -1134,7 +1202,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 <select
                   value={targetForm.strategy}
                   onChange={(e) => setTargetForm((f) => ({ ...f, strategy: e.target.value }))}
-                  className="w-full bg-[#0a0a0f] border border-ink/[0.08] px-2 py-1.5 text-[11px]"
+                  className="w-full bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[11px]"
                 >
                   {strategies.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
@@ -1263,7 +1331,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                   value={graphSource}
                   onChange={(e) => setGraphSource(e.target.value)}
                   placeholder="noirstack.com"
-                  className="bg-[#0a0a0f] border border-ink/[0.08] px-2 py-1.5 text-[11px] font-mono min-w-[12rem]"
+                  className="bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[11px] font-mono min-w-[12rem]"
                 />
               </label>
               <label className="space-y-1">
@@ -1272,7 +1340,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                   value={graphRunId}
                   onChange={(e) => setGraphRunId(e.target.value)}
                   placeholder="optional"
-                  className="bg-[#0a0a0f] border border-ink/[0.08] px-2 py-1.5 text-[11px] font-mono min-w-[14rem]"
+                  className="bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[11px] font-mono min-w-[14rem]"
                 />
               </label>
               <button
@@ -1385,7 +1453,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                     value={claimDraft}
                     onChange={(e) => setClaimDraft(e.target.value)}
                     placeholder="Claim statement…"
-                    className="flex-1 min-w-[16rem] bg-[#0a0a0f] border border-ink/[0.08] px-3 py-1.5 text-[12px] text-ink/70"
+                    className="flex-1 min-w-[16rem] bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[12px] text-ink/70"
                   />
                   <button
                     type="button"
@@ -1577,6 +1645,10 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
           </section>
         )}
 
+        {tab === 'sources' && <SourceInventoryPanel />}
+        {tab === 'enrichment' && <EnrichmentPanel />}
+        {tab === 'rss-sources' && <RssSourcesPanel />}
+
         {tab === 'ops' && (
           <>
         {opsMetrics && (
@@ -1701,7 +1773,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 <select
                   value={form.product}
                   onChange={(e) => setForm((f) => ({ ...f, product: e.target.value }))}
-                  className="w-full bg-[#0a0a0f] border border-ink/[0.08] px-2 py-1.5 text-ink/70"
+                  className="w-full bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-ink/70"
                 >
                   <option value="h3xa">h3xa</option>
                   <option value="judicium">judicium</option>
@@ -1712,7 +1784,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 <input
                   value={form.caseId}
                   onChange={(e) => setForm((f) => ({ ...f, caseId: e.target.value }))}
-                  className="w-full bg-[#0a0a0f] border border-ink/[0.08] px-2 py-1.5 text-ink/70"
+                  className="w-full bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-ink/70"
                   placeholder="1"
                 />
               </label>
@@ -1721,7 +1793,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 <input
                   value={form.target}
                   onChange={(e) => setForm((f) => ({ ...f, target: e.target.value }))}
-                  className="w-full bg-[#0a0a0f] border border-ink/[0.08] px-2 py-1.5 text-ink/70"
+                  className="w-full bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-ink/70"
                 />
               </label>
               <label className="space-y-1 col-span-2">
@@ -1729,7 +1801,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 <select
                   value={form.strategy}
                   onChange={(e) => setForm((f) => ({ ...f, strategy: e.target.value }))}
-                  className="w-full bg-[#0a0a0f] border border-ink/[0.08] px-2 py-1.5 text-ink/70 text-[11px]"
+                  className="w-full bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-ink/70 text-[11px]"
                 >
                   {strategies.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
@@ -1787,7 +1859,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
                 setTargetsDirty(true);
               }}
               spellCheck={false}
-              className="w-full h-48 bg-[#0a0a0f] border border-ink/[0.08] p-3 font-mono text-[11px] text-ink/65 resize-y"
+              className="w-full h-48 bg-noir-bg border border-ink/[0.08] p-3 font-mono text-[11px] text-ink/65 resize-y"
             />
             <p className="text-[10px] text-ink/35">
               Formats: <code>domain</code> · <code>domain case_id</code> · <code>product domain case_id</code>

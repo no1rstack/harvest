@@ -9,6 +9,8 @@ export function defaultCommunityFeedsModuleConfig(): PlatformCommunityFeedsModul
     delegateFromJudicium: process.env.HARVEST_FEEDS_DELEGATE_JUDICIUM !== '0',
     layersIntervalMinutes: Number(process.env.HARVEST_FEEDS_LAYERS_INTERVAL_MINUTES || 30),
     rssIntervalMinutes: Number(process.env.HARVEST_FEEDS_RSS_INTERVAL_MINUTES || 15),
+    rssAdaptiveMaxMinutes: Number(process.env.HARVEST_FEEDS_RSS_ADAPTIVE_MAX_MINUTES || 1440),
+    rssAdaptiveNoopThreshold: Number(process.env.HARVEST_FEEDS_RSS_NOOP_THRESHOLD || 3),
     dailyIntervalHours: Number(process.env.HARVEST_FEEDS_DAILY_INTERVAL_HOURS || 24),
     startupDelaySeconds: Number(process.env.HARVEST_FEEDS_STARTUP_DELAY_SECONDS || 20),
   };
@@ -37,6 +39,8 @@ export function syncLegacyCommunityFeeds(
     delegateFromJudicium: module.delegateFromJudicium,
     layersIntervalMinutes: module.layersIntervalMinutes,
     rssIntervalMinutes: module.rssIntervalMinutes,
+    rssAdaptiveMaxMinutes: module.rssAdaptiveMaxMinutes,
+    rssAdaptiveNoopThreshold: module.rssAdaptiveNoopThreshold,
     dailyIntervalHours: module.dailyIntervalHours,
     startupDelaySeconds: module.startupDelaySeconds,
   };

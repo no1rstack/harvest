@@ -13,5 +13,8 @@ export default defineConfig({
   server: {
     allowedHosts: ['harvest.noirstack.com', 'localhost'],
     hmr: process.env.DISABLE_HMR !== 'true',
+    watch: {
+      ignored: ['**/data/**'],
+    },
   },
 });

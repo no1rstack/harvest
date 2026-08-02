@@ -1,0 +1,1105 @@
+{
+  "generated_at": "2026-08-02T17:25:00Z",
+  "duplicate_domains": 128,
+  "duplicates": [
+    {
+      "domain": "digitallibrary.un.org",
+      "names": [
+        "UN Digital Library",
+        "UN General Assembly Voting Data"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "main.un.org",
+      "names": [
+        "UN Security Council",
+        "UN Security Council Consolidated Sanctions List"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.gov.uk",
+      "names": [
+        "United Kingdom Foreign Office",
+        "United Kingdom Budget and Spending",
+        "United Kingdom Sanctions List",
+        "United Kingdom Export Control Joint Unit",
+        "UK Land Registry",
+        "UK Freedom of Information Releases",
+        "United Kingdom Ministry of Defence",
+        "United Kingdom HM Treasury",
+        "United Kingdom Ministry of Justice",
+        "United Kingdom Department for Business and Trade",
+        "UK Companies House",
+        "Department for Science, Innovation and Technology",
+        "UK Atomic Energy Authority",
+        "UK Space Agency",
+        "Marine Management Organisation",
+        "UK Health Security Agency"
+      ],
+      "count": 16
+    },
+    {
+      "domain": "www.mofa.go.jp",
+      "names": [
+        "Japan Ministry of Foreign Affairs",
+        "Japan Economic Sanctions"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.international.gc.ca",
+      "names": [
+        "Canada Global Affairs",
+        "Canada Sanctions"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.dfat.gov.au",
+      "names": [
+        "Australia Department of Foreign Affairs and Trade",
+        "Australia Sanctions"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.wipo.int",
+      "names": [
+        "WIPO Lex",
+        "WIPO Lex",
+        "World Intellectual Property Organization",
+        "World Intellectual Property Organization",
+        "World Intellectual Property Organization"
+      ],
+      "count": 5
+    },
+    {
+      "domain": "www.europarl.europa.eu",
+      "names": [
+        "European Parliament",
+        "EU Public Register of Documents"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.imf.org",
+      "names": [
+        "IMF Fiscal Monitor",
+        "International Monetary Fund",
+        "IMF Fintech"
+      ],
+      "count": 3
+    },
+    {
+      "domain": "www.worldbank.org",
+      "names": [
+        "World Bank BOOST Public Expenditure Database",
+        "World Bank Infrastructure",
+        "World Bank Urban Development",
+        "World Bank",
+        "World Bank Infrastructure"
+      ],
+      "count": 5
+    },
+    {
+      "domain": "www.oecd.org",
+      "names": [
+        "OECD Government at a Glance",
+        "OECD Employment",
+        "OECD Migration",
+        "OECD Housing",
+        "OECD Anti-Bribery Convention",
+        "OECD Finance",
+        "OECD Economy",
+        "OECD Science, Technology and Innovation",
+        "OECD Migration"
+      ],
+      "count": 9
+    },
+    {
+      "domain": "ec.europa.eu",
+      "names": [
+        "Eurostat Government Finance",
+        "Eurostat International Trade",
+        "Eurostat Energy",
+        "Eurostat Labour Market",
+        "Eurostat Population and Demography",
+        "Eurostat",
+        "EU Funding and Tenders Portal",
+        "Eurostat Population and Demography"
+      ],
+      "count": 8
+    },
+    {
+      "domain": "projects.worldbank.org",
+      "names": [
+        "World Bank Procurement",
+        "World Bank Procurement"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "ted.europa.eu",
+      "names": [
+        "European Union Tenders Electronic Daily",
+        "European Union Tenders Electronic Daily"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.contractsfinder.service.gov.uk",
+      "names": [
+        "United Kingdom Contracts Finder",
+        "United Kingdom Contracts Finder"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.data.gouv.fr",
+      "names": [
+        "France Public Procurement Data",
+        "France Public Procurement Data"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.service.bund.de",
+      "names": [
+        "Germany Public Procurement Portal",
+        "Germany Public Procurement Portal"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "canadabuys.canada.ca",
+      "names": [
+        "CanadaBuys",
+        "CanadaBuys"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.tenders.gov.au",
+      "names": [
+        "Australia AusTender",
+        "Australia AusTender"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "gem.gov.in",
+      "names": [
+        "India Government e-Marketplace",
+        "India Government e-Marketplace"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.meti.go.jp",
+      "names": [
+        "Japan Security Export Control",
+        "Japan Ministry of Economy, Trade and Industry"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.wto.org",
+      "names": [
+        "WTO Trade Policy Measures",
+        "World Trade Organization"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.wcoomd.org",
+      "names": [
+        "World Customs Organization",
+        "World Customs Organization"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "unctadstat.unctad.org",
+      "names": [
+        "UN Trade and Development Statistics",
+        "UN Trade and Transport Data"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "e-justice.europa.eu",
+      "names": [
+        "EU Business Registers Interconnection System",
+        "European e-Justice Portal"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.kvk.nl",
+      "names": [
+        "Netherlands Chamber of Commerce",
+        "Netherlands Chamber of Commerce"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "ised-isde.canada.ca",
+      "names": [
+        "Canada Federal Corporations Search",
+        "Canada Innovation, Science and Economic Development",
+        "Innovation, Science and Economic Development Canada"
+      ],
+      "count": 3
+    },
+    {
+      "domain": "asic.gov.au",
+      "names": [
+        "Australian Securities and Investments Commission Registers",
+        "Australian Securities and Investments Commission",
+        "Australian Securities and Investments Commission \u2014 Crypto Assets"
+      ],
+      "count": 3
+    },
+    {
+      "domain": "www.cr.gov.hk",
+      "names": [
+        "Hong Kong Companies Registry",
+        "Hong Kong Companies Registry"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.ag.gov.au",
+      "names": [
+        "Australia Register of Lobbyists",
+        "Australia Attorney-General\u2019s Department"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.idea.int",
+      "names": [
+        "International IDEA",
+        "International IDEA"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.ifes.org",
+      "names": [
+        "International Foundation for Electoral Systems",
+        "International Foundation for Electoral Systems"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "european-election-database.eu",
+      "names": [
+        "European Election Database",
+        "European Election Database"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.electoralcommission.org.uk",
+      "names": [
+        "UK Electoral Commission",
+        "UK Electoral Commission"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.elections.ca",
+      "names": [
+        "Elections Canada",
+        "Elections Canada"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.aec.gov.au",
+      "names": [
+        "Australian Electoral Commission",
+        "Australian Electoral Commission"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.gihub.org",
+      "names": [
+        "Global Infrastructure Hub",
+        "Global Infrastructure Hub"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.globalinfrafacility.org",
+      "names": [
+        "Global Infrastructure Facility",
+        "Global Infrastructure Facility"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.eib.org",
+      "names": [
+        "European Investment Bank Projects",
+        "European Investment Bank"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.aiib.org",
+      "names": [
+        "Asian Infrastructure Investment Bank Projects",
+        "Asian Infrastructure Investment Bank"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.iea.org",
+      "names": [
+        "International Energy Agency",
+        "International Energy Agency",
+        "International Energy Agency \u2014 Critical Minerals"
+      ],
+      "count": 3
+    },
+    {
+      "domain": "www.irena.org",
+      "names": [
+        "International Renewable Energy Agency",
+        "International Renewable Energy Agency"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.imo.org",
+      "names": [
+        "International Maritime Organization",
+        "International Maritime Organization"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.emsa.europa.eu",
+      "names": [
+        "European Maritime Safety Agency",
+        "European Maritime Safety Agency"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.icao.int",
+      "names": [
+        "International Civil Aviation Organization",
+        "International Civil Aviation Organization"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.easa.europa.eu",
+      "names": [
+        "European Union Aviation Safety Agency",
+        "European Union Aviation Safety Agency"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.itf-oecd.org",
+      "names": [
+        "International Transport Forum",
+        "International Transport Forum"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.ons.gov.uk",
+      "names": [
+        "UK Office for National Statistics Labour Market",
+        "UK Office for National Statistics"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.statcan.gc.ca",
+      "names": [
+        "Statistics Canada Labour",
+        "Statistics Canada"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.abs.gov.au",
+      "names": [
+        "Australian Bureau of Statistics Labour",
+        "Australia Property Data",
+        "Australian Bureau of Statistics"
+      ],
+      "count": 3
+    },
+    {
+      "domain": "www.un.org",
+      "names": [
+        "UN Population Division",
+        "UN Population Division"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.iom.int",
+      "names": [
+        "International Organization for Migration",
+        "International Organization for Migration"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.migrationdataportal.org",
+      "names": [
+        "Migration Data Portal",
+        "Migration Data Portal"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.unhcr.org",
+      "names": [
+        "UN Refugee Agency",
+        "UN Refugee Agency"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.fao.org",
+      "names": [
+        "UN Food and Agriculture Organization",
+        "FAOSTAT",
+        "AQUASTAT Water Database",
+        "UN Food and Agriculture Organization",
+        "FAOSTAT"
+      ],
+      "count": 5
+    },
+    {
+      "domain": "www.wfp.org",
+      "names": [
+        "World Food Programme",
+        "World Food Programme"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.ifpri.org",
+      "names": [
+        "International Food Policy Research Institute",
+        "International Food Policy Research Institute"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.who.int",
+      "names": [
+        "WHO Disease Outbreak News",
+        "World Health Organization"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.ecdc.europa.eu",
+      "names": [
+        "European Centre for Disease Prevention and Control",
+        "European Centre for Disease Prevention and Control"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "africacdc.org",
+      "names": [
+        "Africa Centres for Disease Control",
+        "Africa Centres for Disease Control and Prevention"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.ema.europa.eu",
+      "names": [
+        "European Medicines Agency",
+        "European Medicines Agency"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.pmda.go.jp",
+      "names": [
+        "Japan Pharmaceuticals and Medical Devices Agency",
+        "Japan Pharmaceuticals and Medical Devices Agency"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.tga.gov.au",
+      "names": [
+        "Australian Therapeutic Goods Administration",
+        "Australian Therapeutic Goods Administration"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "wmo.int",
+      "names": [
+        "World Meteorological Organization",
+        "World Meteorological Organization",
+        "World Meteorological Organization"
+      ],
+      "count": 3
+    },
+    {
+      "domain": "climate.copernicus.eu",
+      "names": [
+        "Copernicus Climate Change Service",
+        "Copernicus Climate Change Service"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.ecmwf.int",
+      "names": [
+        "European Centre for Medium-Range Weather Forecasts",
+        "European Centre for Medium-Range Weather Forecasts"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.gdacs.org",
+      "names": [
+        "Global Disaster Alert and Coordination System",
+        "Global Disaster Alert and Coordination System"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.emdat.be",
+      "names": [
+        "EM-DAT Disaster Database",
+        "EM-DAT International Disaster Database"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.isc.ac.uk",
+      "names": [
+        "International Seismological Centre",
+        "International Seismological Centre"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "volcano.si.edu",
+      "names": [
+        "Global Volcanism Program",
+        "Global Volcanism Program"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.ohchr.org",
+      "names": [
+        "UN Human Rights Office",
+        "UN Universal Periodic Review"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "openalex.org",
+      "names": [
+        "OpenAlex",
+        "OpenAlex"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.crossref.org",
+      "names": [
+        "Crossref",
+        "Crossref"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "arxiv.org",
+      "names": [
+        "arXiv",
+        "arXiv"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "pubmed.ncbi.nlm.nih.gov",
+      "names": [
+        "PubMed",
+        "PubMed"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "cordis.europa.eu",
+      "names": [
+        "CORDIS EU Research Results",
+        "CORDIS \u2014 EU Research Results"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.iso.org",
+      "names": [
+        "International Organization for Standardization",
+        "International Organization for Standardization"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.iec.ch",
+      "names": [
+        "International Electrotechnical Commission",
+        "International Electrotechnical Commission"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.itu.int",
+      "names": [
+        "International Telecommunication Union Standards",
+        "International Telecommunication Union"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "web.archive.org",
+      "names": [
+        "Internet Archive Wayback Machine",
+        "Wayback Machine CDX"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.regjeringen.no",
+      "names": [
+        "Norway Ministry of Defence",
+        "Norway Ministry of Finance",
+        "Norway Ministry of Justice",
+        "Norway Ministry of Trade, Industry and Fisheries"
+      ],
+      "count": 4
+    },
+    {
+      "domain": "www.government.se",
+      "names": [
+        "Sweden Ministry of Defence",
+        "Swedish Ministry of Finance",
+        "Sweden Ministry of Justice",
+        "Sweden Ministry of Climate and Enterprise"
+      ],
+      "count": 4
+    },
+    {
+      "domain": "www.gov.pl",
+      "names": [
+        "Poland Ministry of National Defence",
+        "Poland Ministry of Finance",
+        "Poland Ministry of Justice",
+        "Poland Ministry of Economic Development"
+      ],
+      "count": 4
+    },
+    {
+      "domain": "www.canada.ca",
+      "names": [
+        "Canada Department of National Defence",
+        "Canada Department of Finance",
+        "Environment and Climate Change Canada"
+      ],
+      "count": 3
+    },
+    {
+      "domain": "www.gov.br",
+      "names": [
+        "Brazil Ministry of Defence",
+        "Brazil Federal Police",
+        "Brazil Ministry of Finance",
+        "Brazil Ministry of Justice and Public Security",
+        "Brazil Ministry of Development, Industry and Trade",
+        "Ministry of Science, Technology and Innovation",
+        "National Council for Scientific and Technological Development",
+        "Brazilian Nuclear Energy Commission",
+        "National Institute for Space Research",
+        "Brazilian Space Agency",
+        "Brazil Securities and Exchange Commission"
+      ],
+      "count": 11
+    },
+    {
+      "domain": "www.gov.il",
+      "names": [
+        "Israel Police",
+        "Israel Ministry of Finance",
+        "Israel Ministry of Justice",
+        "Israel Judicial Authority",
+        "Israel Ministry of Economy and Industry",
+        "Ministry of Innovation, Science and Technology",
+        "Israel Atomic Energy Commission",
+        "Geological Survey of Israel"
+      ],
+      "count": 8
+    },
+    {
+      "domain": "www.gob.mx",
+      "names": [
+        "Mexico Secretariat of Security and Citizen Protection",
+        "Mexico Secretariat of Finance and Public Credit",
+        "Mexico Secretariat of Economy"
+      ],
+      "count": 3
+    },
+    {
+      "domain": "www.argentina.gob.ar",
+      "names": [
+        "Argentina Federal Police",
+        "Argentina Ministry of Economy",
+        "Argentina Ministry of Justice",
+        "Argentina Ministry of Economy",
+        "National Atomic Energy Commission",
+        "National Space Activities Commission",
+        "National Institute of Agricultural Technology"
+      ],
+      "count": 7
+    },
+    {
+      "domain": "www.bankofengland.co.uk",
+      "names": [
+        "Bank of England",
+        "Bank of England \u2014 Digital Pound"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.fca.org.uk",
+      "names": [
+        "UK Financial Conduct Authority",
+        "UK Financial Conduct Authority \u2014 Cryptoassets"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.economie.gouv.fr",
+      "names": [
+        "France Ministry of Economics and Finance",
+        "France Ministry of Economy"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.amf-france.org",
+      "names": [
+        "France Financial Markets Authority",
+        "France Financial Markets Authority \u2014 Digital Assets"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.bafin.de",
+      "names": [
+        "Germany BaFin",
+        "Germany BaFin \u2014 Crypto Assets"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "portal.mineco.gob.es",
+      "names": [
+        "Spain Ministry of Economy",
+        "Spain Ministry of Economy"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.government.nl",
+      "names": [
+        "Netherlands Ministry of Finance",
+        "Netherlands Ministry of Justice and Security"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.ecb.europa.eu",
+      "names": [
+        "European Central Bank",
+        "European Central Bank \u2014 Digital Euro"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.esma.europa.eu",
+      "names": [
+        "European Securities and Markets Authority",
+        "European Securities and Markets Authority \u2014 MiCA"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.boj.or.jp",
+      "names": [
+        "Bank of Japan",
+        "Bank of Japan \u2014 Central Bank Digital Currency"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.fsa.go.jp",
+      "names": [
+        "Japan Financial Services Agency",
+        "Japan Financial Services Agency \u2014 Fintech"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.pbc.gov.cn",
+      "names": [
+        "People\u2019s Bank of China",
+        "People\u2019s Bank of China"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.rbi.org.in",
+      "names": [
+        "Reserve Bank of India",
+        "Reserve Bank of India"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.bok.or.kr",
+      "names": [
+        "Bank of Korea",
+        "Bank of Korea"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.fsc.go.kr",
+      "names": [
+        "South Korea Financial Services Commission",
+        "South Korea Financial Services Commission"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.mas.gov.sg",
+      "names": [
+        "Monetary Authority of Singapore",
+        "Monetary Authority of Singapore \u2014 FinTech"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.hkma.gov.hk",
+      "names": [
+        "Hong Kong Monetary Authority",
+        "Hong Kong Monetary Authority \u2014 Digital Finance"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.rba.gov.au",
+      "names": [
+        "Reserve Bank of Australia",
+        "Reserve Bank of Australia \u2014 Digital Currency"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.centralbank.ae",
+      "names": [
+        "Central Bank of the UAE",
+        "Central Bank of the UAE"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.sama.gov.sa",
+      "names": [
+        "Saudi Central Bank",
+        "Saudi Central Bank"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.qcb.gov.qa",
+      "names": [
+        "Qatar Central Bank",
+        "Qatar Central Bank"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.bankofcanada.ca",
+      "names": [
+        "Bank of Canada",
+        "Bank of Canada \u2014 Digital Currencies and Fintech"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.bcb.gov.br",
+      "names": [
+        "Central Bank of Brazil",
+        "Central Bank of Brazil"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.banxico.org.mx",
+      "names": [
+        "Bank of Mexico",
+        "Bank of Mexico"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.resbank.co.za",
+      "names": [
+        "South African Reserve Bank",
+        "South African Reserve Bank \u2014 Fintech"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.cbn.gov.ng",
+      "names": [
+        "Central Bank of Nigeria",
+        "Central Bank of Nigeria"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.bis.org",
+      "names": [
+        "Bank for International Settlements",
+        "BIS Innovation Hub",
+        "BIS Central Bank Digital Currency"
+      ],
+      "count": 3
+    },
+    {
+      "domain": "www.fsb.org",
+      "names": [
+        "Financial Stability Board",
+        "Financial Stability Board \u2014 Crypto Assets"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.fatf-gafi.org",
+      "names": [
+        "FATF",
+        "FATF \u2014 Virtual Assets"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.industry.gov.au",
+      "names": [
+        "Australia Department of Industry",
+        "Department of Industry, Science and Resources"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.mbie.govt.nz",
+      "names": [
+        "New Zealand Ministry of Business, Innovation and Employment",
+        "Ministry of Business, Innovation and Employment"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.ukri.org",
+      "names": [
+        "UK Research and Innovation",
+        "Engineering and Physical Sciences Research Council",
+        "Biotechnology and Biological Sciences Research Council",
+        "Medical Research Council",
+        "Natural Environment Research Council",
+        "Science and Technology Facilities Council"
+      ],
+      "count": 6
+    },
+    {
+      "domain": "www.jamstec.go.jp",
+      "names": [
+        "Japan Agency for Marine-Earth Science and Technology",
+        "Japan Agency for Marine-Earth Science and Technology"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.csiro.au",
+      "names": [
+        "Commonwealth Scientific and Industrial Research Organisation",
+        "CSIRO Oceans and Coasts"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.ga.gov.au",
+      "names": [
+        "Geoscience Australia",
+        "Geoscience Australia"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.aims.gov.au",
+      "names": [
+        "Australian Institute of Marine Science",
+        "Australian Institute of Marine Science"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "niwa.co.nz",
+      "names": [
+        "National Institute of Water and Atmospheric Research",
+        "New Zealand National Institute of Water and Atmospheric Research"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "natural-resources.canada.ca",
+      "names": [
+        "Natural Resources Canada",
+        "Geological Survey of Canada"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "www.gbif.org",
+      "names": [
+        "Global Biodiversity Information Facility",
+        "Global Biodiversity Information Facility"
+      ],
+      "count": 2
+    },
+    {
+      "domain": "news.un.org",
+      "names": [
+        "news.un.org (\u00d719 identical entries)"
+      ],
+      "count": 19,
+      "note": "API registry import duplicates \u2014 all point to same feed"
+    }
+  ]
+}
