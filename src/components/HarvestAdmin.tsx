@@ -9,11 +9,8 @@ import {
   Database, Crosshair, ListTree, Terminal, LogIn, LogOut, Brain, Settings, Layers, Rss,
   Sun, Moon, Globe, BookOpen,
 } from 'lucide-react';
-import { ArchitectureExplorer } from './ArchitectureExplorer';
-import { FeedIntelligenceExplorer } from './FeedIntelligenceExplorer';
-import { SourceInventoryPanel } from './SourceInventoryPanel';
-import { EnrichmentPanel } from './EnrichmentPanel';
-import { RssSourcesPanel } from './RssSourcesPanel';
+import { HarvestDockview, useDockviewPanels, type DockPanel } from './HarvestDockview';
+import type { DockviewApi } from 'dockview-react';
 import { cn } from '../types';
 
 interface HarvestAuthState {
@@ -122,6 +119,7 @@ function statusTone(status: string) {
 export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) => {
   const [auth, setAuth] = useState<HarvestAuthState | null>(null);
   const [tab, setTab] = useState<'ops' | 'findings' | 'registry' | 'graph' | 'intelligence' | 'feeds' | 'platform' | 'architecture' | 'sources' | 'enrichment' | 'rss-sources'>('findings');
+  const [dockviewApi, setDockviewApi] = useState<DockviewApi | null>(null);
   const [data, setData] = useState<HarvestStatus | null>(null);
   const [targetsText, setTargetsText] = useState('');
   const [targetsDirty, setTargetsDirty] = useState(false);
@@ -696,6 +694,29 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
     ];
   }, [data]);
 
+  // ─── Dockview: panel registry & inline components ───────────
+  const PANELS: DockPanel[] = [
+    { id: 'findings', name: 'Findings', component: 'findings' },
+    { id: 'registry', name: 'Targets', component: 'registry' },
+    { id: 'graph', name: 'Graph', component: 'graph' },
+    { id: 'intelligence', name: 'Intelligence', component: 'intelligence' },
+    { id: 'feeds', name: 'Feeds', component: 'feeds' },
+    { id: 'ops', name: 'Ops', component: 'ops' },
+    { id: 'architecture', name: 'Architecture', component: 'architecture' },
+    { id: 'platform', name: 'Platform', component: 'platform' },
+    { id: 'sources', name: 'Sources', component: 'sources' },
+    { id: 'enrichment', name: 'Enrichment', component: 'enrichment' },
+    { id: 'rss-sources', name: 'RSS Sources', component: 'rss-sources' },
+  ];
+
+  const { openPanel } = useDockviewPanels(dockviewApi, PANELS);
+
+  if (!auth) {
+    return (
+      <div className={"flex items-center justify-center min-h-dvh bg-noir-bg text-ink/40 text-[13px]"}>…</div>
+    );
+  }
+
   return (
     <div className={cn('min-h-dvh w-screen bg-noir-bg text-ink flex flex-col', className)}>
       <header className="shrink-0 border-b border-ink/[0.06] bg-noir-surface px-6 py-4 flex items-center justify-between gap-4">
@@ -711,7 +732,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
             <div className="ml-4 flex items-center gap-1 border border-ink/[0.08] p-0.5">
               <button
                 type="button"
-                onClick={() => setTab('findings')}
+                onClick={() => { setTab('findings'); openPanel('findings'); }}
                 className={cn(
                   'px-3 py-1 text-[11px]',
                   tab === 'findings' ? 'bg-ink/[0.08] text-ink/80' : 'text-ink/40 hover:text-ink/65',
@@ -721,7 +742,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
               </button>
               <button
                 type="button"
-                onClick={() => setTab('registry')}
+                onClick={() => { setTab('registry'); openPanel('registry'); }}
                 className={cn(
                   'px-3 py-1 text-[11px]',
                   tab === 'registry' ? 'bg-ink/[0.08] text-ink/80' : 'text-ink/40 hover:text-ink/65',
@@ -731,7 +752,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
               </button>
               <button
                 type="button"
-                onClick={() => setTab('graph')}
+                onClick={() => { setTab('graph'); openPanel('graph'); }}
                 className={cn(
                   'px-3 py-1 text-[11px]',
                   tab === 'graph' ? 'bg-ink/[0.08] text-ink/80' : 'text-ink/40 hover:text-ink/65',
@@ -741,7 +762,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
               </button>
               <button
                 type="button"
-                onClick={() => setTab('intelligence')}
+                onClick={() => { setTab('intelligence'); openPanel('intelligence'); }}
                 className={cn(
                   'px-3 py-1.5 text-[11px] uppercase tracking-wider',
                   tab === 'intelligence' ? 'bg-ink/[0.08] text-ink/80' : 'text-ink/40 hover:text-ink/65',
@@ -752,7 +773,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
               </button>
               <button
                 type="button"
-                onClick={() => setTab('feeds')}
+                onClick={() => { setTab('feeds'); openPanel('feeds'); }}
                 className={cn(
                   'px-3 py-1 text-[11px]',
                   tab === 'feeds' ? 'bg-ink/[0.08] text-ink/80' : 'text-ink/40 hover:text-ink/65',
@@ -763,7 +784,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
               </button>
               <button
                 type="button"
-                onClick={() => setTab('ops')}
+                onClick={() => { setTab('ops'); openPanel('ops'); }}
                 className={cn(
                   'px-3 py-1 text-[11px]',
                   tab === 'ops' ? 'bg-ink/[0.08] text-ink/80' : 'text-ink/40 hover:text-ink/65',
@@ -773,7 +794,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
               </button>
               <button
                 type="button"
-                onClick={() => setTab('architecture')}
+                onClick={() => { setTab('architecture'); openPanel('architecture'); }}
                 className={cn(
                   'px-3 py-1 text-[11px]',
                   tab === 'architecture' ? 'bg-ink/[0.08] text-ink/80' : 'text-ink/40 hover:text-ink/65',
@@ -784,7 +805,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
               </button>
               <button
                 type="button"
-                onClick={() => setTab('platform')}
+                onClick={() => { setTab('platform'); openPanel('platform'); }}
                 className={cn(
                   'px-3 py-1 text-[11px]',
                   tab === 'platform' ? 'bg-ink/[0.08] text-ink/80' : 'text-ink/40 hover:text-ink/65',
@@ -795,7 +816,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
               </button>
               <button
                 type="button"
-                onClick={() => setTab('sources')}
+                onClick={() => { setTab('sources'); openPanel('sources'); }}
                 className={cn(
                   'px-3 py-1 text-[11px]',
                   tab === 'sources' ? 'bg-ink/[0.08] text-ink/80' : 'text-ink/40 hover:text-ink/65',
@@ -806,7 +827,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
               </button>
               <button
                 type="button"
-                onClick={() => setTab('enrichment')}
+                onClick={() => { setTab('enrichment'); openPanel('enrichment'); }}
                 className={cn(
                   'px-3 py-1 text-[11px]',
                   tab === 'enrichment' ? 'bg-ink/[0.08] text-ink/80' : 'text-ink/40 hover:text-ink/65',
@@ -817,7 +838,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
               </button>
               <button
                 type="button"
-                onClick={() => setTab('rss-sources')}
+                onClick={() => { setTab('rss-sources'); openPanel('rss-sources'); }}
                 className={cn(
                   'px-3 py-1 text-[11px]',
                   tab === 'rss-sources' ? 'bg-ink/[0.08] text-ink/80' : 'text-ink/40 hover:text-ink/65',
@@ -872,1108 +893,12 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-6 space-y-6 max-w-[1400px] w-full mx-auto">
-        {auth?.required && !auth.authenticated ? (
-          <div className="border border-ink/[0.08] bg-ink/[0.02] p-8 max-w-lg mx-auto text-center space-y-4">
-            <img src="/logo.svg" alt="Collection Platform" className="h-10 w-10 mx-auto" />
-            <h1 className="text-lg text-ink/80">Sign in required</h1>
-            <p className="text-[12px] text-ink/45">
-              Authentication required to access the Collection Platform.
-            </p>
-            <a
-              href="/api/harvest/auth/login"
-              className="inline-flex items-center gap-2 px-4 py-2 border border-ink/20 text-ink/75 hover:bg-ink/[0.04]"
-            >
-              <LogIn size={14} /> Sign in
-            </a>
-          </div>
-        ) : (
-          <>
-        {error && (
-          <div className="flex items-start gap-2 px-3 py-2 border border-amber-400/20 bg-amber-400/[0.05] text-amber-200/70 text-[12px]">
-            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {!data?.enabled && (
-          <div className="border border-ink/[0.06] p-4 text-[12px] text-ink/45">
-            Postgres not enabled — set <code className="text-ink/60">HARVEST_DATABASE_URL</code> via Infisical
-            (<code className="text-ink/60">npm run osint:db:sync -- harvest</code>).
-          </div>
-        )}
-
-        {tab === 'findings' && (
-          <section className="space-y-4">
-            <div className="flex flex-wrap items-end gap-3 border border-ink/[0.05] bg-ink/[0.015] p-4">
-              <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-ink/40 flex-1 min-w-[12rem]">
-                Search
-                <input
-                  value={findingsQ}
-                  onChange={(e) => setFindingsQ(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && void loadFindings(0)}
-                  placeholder="value, title, label…"
-                  className="bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[12px] text-ink/70 normal-case tracking-normal"
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-ink/40">
-                Source
-                <select
-                  value={findingsSource}
-                  onChange={(e) => setFindingsSource(e.target.value)}
-                  className="bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[12px] text-ink/70 normal-case tracking-normal min-w-[9rem]"
-                >
-                  <option value="">All</option>
-                  {(data?.bySource || []).map((s) => (
-                    <option key={s.source} value={s.source}>{s.source} ({s.count})</option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-ink/40">
-                Type
-                <select
-                  value={findingsType}
-                  onChange={(e) => setFindingsType(e.target.value)}
-                  className="bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[12px] text-ink/70 normal-case tracking-normal min-w-[9rem]"
-                >
-                  <option value="">All</option>
-                  {(data?.byEntityType || []).map((s) => (
-                    <option key={s.entity_type} value={s.entity_type}>{s.entity_type} ({s.count})</option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-ink/40">
-                Connector
-                <select
-                  value={findingsConnector}
-                  onChange={(e) => setFindingsConnector(e.target.value)}
-                  className="bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[12px] text-ink/70 normal-case tracking-normal min-w-[9rem]"
-                >
-                  <option value="">All</option>
-                  {HARVESTERS.map((h) => (
-                    <option key={h} value={h}>{h}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-ink/40">
-                Product
-                <select
-                  value={findingsProduct}
-                  onChange={(e) => setFindingsProduct(e.target.value)}
-                  className="bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[12px] text-ink/70 normal-case tracking-normal min-w-[8rem]"
-                >
-                  <option value="">All</option>
-                  <option value="shared">shared</option>
-                  <option value="h3xa">h3xa</option>
-                  <option value="judicium">judicium</option>
-                </select>
-              </label>
-              <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-ink/40 flex-1 min-w-[12rem]">
-                Cascades run
-                <input
-                  value={findingsWorkflowRunId}
-                  onChange={(e) => setFindingsWorkflowRunId(e.target.value)}
-                  placeholder="run-…"
-                  className="bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[12px] font-mono text-ink/70 normal-case tracking-normal"
-                />
-              </label>
-              <button
-                type="button"
-                disabled={findingsBusy}
-                onClick={() => void loadFindings(0)}
-                className="px-3 py-1.5 border border-ink/[0.12] text-[11px] text-ink/70 disabled:opacity-40"
-              >
-                {findingsBusy ? 'Loading…' : 'Apply'}
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between text-[11px] text-ink/40">
-              <span>
-                {findingsTotal} finding{findingsTotal === 1 ? '' : 's'}
-                {findingsTotal > 0 && (
-                  <> · showing {findingsOffset + 1}–{Math.min(findingsOffset + findingsRows.length, findingsTotal)}</>
-                )}
-              </span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  disabled={findingsBusy || findingsOffset <= 0}
-                  onClick={() => void loadFindings(Math.max(0, findingsOffset - findingsLimit))}
-                  className="px-2 py-1 border border-ink/[0.08] disabled:opacity-30"
-                >
-                  Prev
-                </button>
-                <button
-                  type="button"
-                  disabled={findingsBusy || findingsOffset + findingsLimit >= findingsTotal}
-                  onClick={() => void loadFindings(findingsOffset + findingsLimit)}
-                  className="px-2 py-1 border border-ink/[0.08] disabled:opacity-30"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-
-            <div className="border border-ink/[0.05] bg-ink/[0.015] overflow-hidden">
-              <div className="grid grid-cols-[7rem_6rem_5rem_1fr_8rem] gap-2 px-3 py-2 border-b border-ink/[0.06] text-[10px] uppercase tracking-wider text-ink/35">
-                <span>Source</span>
-                <span>Type</span>
-                <span>Product</span>
-                <span>Value</span>
-                <span className="text-right">Seen</span>
-              </div>
-              <div className="max-h-[28rem] overflow-y-auto divide-y divide-ink/[0.04]">
-                {findingsRows.map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onClick={() => void openFinding(f.id)}
-                    className={cn(
-                      'w-full grid grid-cols-[6rem_5rem_5rem_5rem_1fr_8rem] gap-2 px-3 py-2 text-left text-[11px] hover:bg-ink/[0.03]',
-                      selectedFinding?.id === f.id && 'bg-ink/[0.04]',
-                    )}
-                  >
-                    <span className="text-ink/45 truncate">{f.connector_id || f.source}</span>
-                    <span className="text-ink/35 truncate">{f.entity_type}</span>
-                    <span className="text-ink/30 truncate">{f.workflow_template || '—'}</span>
-                    <span className="text-ink/75 truncate font-mono">{f.value || f.title}</span>
-                    <span className="text-ink/25 text-right truncate">
-                      {f.created_at ? new Date(f.created_at).toLocaleString() : ''}
-                    </span>
-                  </button>
-                ))}
-                {!findingsRows.length && !findingsBusy && (
-                  <p className="px-3 py-8 text-center text-[12px] text-ink/30">No findings match</p>
-                )}
-              </div>
-            </div>
-
-            {selectedFinding && (
-              <div className="border border-ink/[0.08] bg-ink/[0.02] p-4 space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider text-ink/40">Finding detail</div>
-                    <div className="mt-1 font-mono text-[13px] text-ink/80 break-all">
-                      {selectedFinding.value || selectedFinding.title}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedFinding(null)}
-                    className="text-[11px] text-ink/40 hover:text-ink/70 shrink-0"
-                  >
-                    Close
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[11px]">
-                  <div><span className="text-ink/35">Source</span><p className="text-ink/65">{selectedFinding.source}</p></div>
-                  <div><span className="text-ink/35">Type</span><p className="text-ink/65">{selectedFinding.entity_type}</p></div>
-                  <div><span className="text-ink/35">Product</span><p className="text-ink/65">{selectedFinding.product || '—'}</p></div>
-                  <div><span className="text-ink/35">Severity</span><p className="text-ink/65">{selectedFinding.severity || '—'}</p></div>
-                  <div><span className="text-ink/35">Confidence</span><p className="text-ink/65">{selectedFinding.confidence ?? '—'}</p></div>
-                  <div><span className="text-ink/35">Target</span><p className="text-ink/65">{selectedFinding.run_target || '—'}</p></div>
-                  <div><span className="text-ink/35">Run</span><p className="font-mono text-ink/55 truncate">{selectedFinding.run_id || '—'}</p></div>
-                  <div><span className="text-ink/35">Created</span><p className="text-ink/55">{selectedFinding.created_at ? new Date(selectedFinding.created_at).toLocaleString() : '—'}</p></div>
-                </div>
-                {(selectedFinding.workflow_run_id || selectedFinding.workflow_template) && (
-                  <div className="border border-ink/[0.06] bg-ink/[0.02] p-3 space-y-2 text-[11px]">
-                    <div className="text-[10px] uppercase tracking-wider text-ink/40">Collection provenance</div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <div><span className="text-ink/35">Workflow</span><p className="text-ink/65">{selectedFinding.workflow_template || '—'}</p></div>
-                      <div><span className="text-ink/35">Version</span><p className="text-ink/65">{selectedFinding.workflow_version || '—'}</p></div>
-                      <div><span className="text-ink/35">Node</span><p className="font-mono text-ink/55">{selectedFinding.node_id || '—'}</p></div>
-                      <div><span className="text-ink/35">Connector</span><p className="text-ink/65">{selectedFinding.connector_id || '—'}</p></div>
-                    </div>
-                    {selectedFinding.workflow_run_id && (
-                      <a
-                        href={cascadesWorkflowUrl(
-                          selectedFinding.workflow_template || 'passive-domain-collection',
-                          selectedFinding.workflow_run_id,
-                          cascadesUrl,
-                        )}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-sky-400/80 hover:text-sky-300 text-[11px]"
-                      >
-                        Open Cascades run →
-                      </a>
-                    )}
-                  </div>
-                )}
-                {selectedFinding.title && (
-                  <div className="text-[12px] text-ink/60">{selectedFinding.title}</div>
-                )}
-                {selectedFinding.description && (
-                  <div className="text-[12px] text-ink/45 whitespace-pre-wrap">{selectedFinding.description}</div>
-                )}
-                {selectedFinding.tags && selectedFinding.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {selectedFinding.tags.map((t) => (
-                      <span key={t} className="px-1.5 py-0.5 border border-ink/[0.08] text-[10px] text-ink/40">{t}</span>
-                    ))}
-                  </div>
-                )}
-                {selectedFinding.raw != null && (
-                  <pre className="max-h-48 overflow-auto bg-noir-bg border border-ink/[0.06] p-3 text-[10px] text-ink/45 font-mono">
-                    {JSON.stringify(selectedFinding.raw, null, 2)}
-                  </pre>
-                )}
-              </div>
-            )}
-          </section>
-        )}
-
-        {tab === 'registry' && (
-          <section className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-ink/45">
-                <Crosshair size={12} /> Target Registry ({registryTotal})
-              </div>
-              <button
-                type="button"
-                disabled={Boolean(busy)}
-                onClick={async () => {
-                  setBusy('seed');
-                  try {
-                    await fetch('/api/collection/targets/seed', { method: 'POST', credentials: 'include' });
-                    await loadRegistry();
-                  } finally {
-                    setBusy(null);
-                  }
-                }}
-                className="px-3 py-1.5 border border-ink/[0.08] text-[11px] text-ink/55 hover:text-ink/80"
-              >
-                Sync targets.txt
-              </button>
-            </div>
-            <form
-              className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end border border-ink/[0.06] p-3 bg-ink/[0.02]"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const strategy = strategies.find((s) => s.id === targetForm.strategy);
-                if (!targetForm.value.trim()) return;
-                setBusy('add-target');
-                try {
-                  const res = await fetch('/api/collection/targets', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      value: targetForm.value.trim(),
-                      product: targetForm.product,
-                      collection_strategy: targetForm.strategy,
-                      workflow_template: strategy?.workflow_template,
-                      collection_profile: strategy?.profile,
-                      collection_policy: strategy?.policy,
-                      priority: strategy?.priority,
-                      origin: 'api',
-                    }),
-                  });
-                  const body = await res.json().catch(() => ({}));
-                  if (!res.ok) throw new Error(body.error || `add target failed (${res.status})`);
-                  setTargetForm((f) => ({ ...f, value: '' }));
-                  await loadRegistry();
-                } catch (err) {
-                  setError((err as Error).message);
-                } finally {
-                  setBusy(null);
-                }
-              }}
-            >
-              <label className="space-y-1">
-                <span className="text-[10px] uppercase tracking-wider text-ink/40">Target value</span>
-                <input
-                  value={targetForm.value}
-                  onChange={(e) => setTargetForm((f) => ({ ...f, value: e.target.value }))}
-                  placeholder="noirstack.com"
-                  className="w-full bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[11px] font-mono"
-                />
-              </label>
-              <label className="space-y-1">
-                <span className="text-[10px] uppercase tracking-wider text-ink/40">Product</span>
-                <input
-                  value={targetForm.product}
-                  onChange={(e) => setTargetForm((f) => ({ ...f, product: e.target.value }))}
-                  className="w-full bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[11px]"
-                />
-              </label>
-              <label className="space-y-1 md:col-span-2">
-                <span className="text-[10px] uppercase tracking-wider text-ink/40">Collection strategy</span>
-                <select
-                  value={targetForm.strategy}
-                  onChange={(e) => setTargetForm((f) => ({ ...f, strategy: e.target.value }))}
-                  className="w-full bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[11px]"
-                >
-                  {strategies.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="submit"
-                disabled={Boolean(busy) || !targetForm.value.trim()}
-                className="md:col-span-4 px-3 py-1.5 border border-ink/[0.08] text-[11px] text-ink/55 hover:text-ink/80 disabled:opacity-40"
-              >
-                Add target
-              </button>
-            </form>
-            <div className="overflow-auto max-h-[28rem]">
-              <table className="w-full text-[11px]">
-                <thead>
-                  <tr className="text-ink/40 text-left border-b border-ink/[0.06]">
-                    <th className="py-2 pr-2">Value</th>
-                    <th className="py-2 pr-2">Type</th>
-                    <th className="py-2 pr-2">Product</th>
-                    <th className="py-2 pr-2">Workflow</th>
-                    <th className="py-2 pr-2">Strategy</th>
-                    <th className="py-2 pr-2">Profile</th>
-                    <th className="py-2 pr-2">Policy</th>
-                    <th className="py-2 pr-2">Priority</th>
-                    <th className="py-2 pr-2">Next</th>
-                    <th className="py-2 pr-2">Cascades run</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {registryRows.map((t) => (
-                    <tr key={t.id} className="border-b border-ink/[0.04] text-ink/65">
-                      <td className="py-2 pr-2 font-mono">{t.value}</td>
-                      <td className="py-2 pr-2">{t.target_type}</td>
-                      <td className="py-2 pr-2">{t.product}</td>
-                      <td className="py-2 pr-2">
-                        {catalogWorkflows.find((w) => w.id === t.workflow_template)?.name || t.workflow_template}
-                      </td>
-                      <td className="py-2 pr-2">
-                        <select
-                          value={t.collection_strategy || ''}
-                          onChange={async (e) => {
-                            const strategyId = e.target.value;
-                            const strategy = strategies.find((s) => s.id === strategyId);
-                            if (!strategy) return;
-                            setBusy(`strategy-${t.id}`);
-                            try {
-                              const res = await fetch(`/api/collection/targets/${encodeURIComponent(t.id)}`, {
-                                method: 'PUT',
-                                credentials: 'include',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                  collection_strategy: strategyId,
-                                  workflow_template: strategy.workflow_template,
-                                  collection_profile: strategy.profile,
-                                  collection_policy: strategy.policy,
-                                  priority: strategy.priority,
-                                }),
-                              });
-                              if (!res.ok) {
-                                const body = await res.json().catch(() => ({}));
-                                throw new Error(body.error || `update failed (${res.status})`);
-                              }
-                              await loadRegistry();
-                            } catch (err) {
-                              setError((err as Error).message);
-                            } finally {
-                              setBusy(null);
-                            }
-                          }}
-                          className="bg-transparent border border-ink/[0.06] text-[10px] max-w-[10rem]"
-                        >
-                          <option value="">—</option>
-                          {strategies.map((s) => (
-                            <option key={s.id} value={s.id}>{s.name}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="py-2 pr-2 text-ink/50">{t.collection_profile || 'standard'}</td>
-                      <td className="py-2 pr-2 text-ink/50">{t.collection_policy || t.frequency || '—'}</td>
-                      <td className="py-2 pr-2 text-ink/50">{t.priority ?? '—'}</td>
-                      <td className="py-2 pr-2 text-ink/45">{t.next_collect_at ? new Date(t.next_collect_at).toLocaleString() : '—'}</td>
-                      <td className="py-2 pr-2">
-                        {t.last_cascades_run_id ? (
-                          <a
-                            href={cascadesWorkflowUrl(t.workflow_template, t.last_cascades_run_id, cascadesUrl)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-mono text-sky-400/70 hover:text-sky-300 truncate max-w-[8rem] inline-block"
-                          >
-                            {t.last_cascades_run_id.slice(0, 14)}…
-                          </a>
-                        ) : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                  {!registryRows.length && (
-                    <tr><td colSpan={11} className="py-6 text-center text-ink/35">No targets — add above or sync targets.txt</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
-
-        {tab === 'graph' && (
-          <section className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-ink/45">
-                <ListTree size={12} /> Collection Graph ({graphEdges.length})
-              </div>
-              <button
-                type="button"
-                disabled={graphBusy}
-                onClick={() => void loadGraph()}
-                className="text-[10px] text-ink/45 hover:text-ink/70"
-              >
-                Refresh
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2 items-end">
-              <label className="space-y-1">
-                <span className="text-[10px] uppercase tracking-wider text-ink/40">Source value</span>
-                <input
-                  value={graphSource}
-                  onChange={(e) => setGraphSource(e.target.value)}
-                  placeholder="noirstack.com"
-                  className="bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[11px] font-mono min-w-[12rem]"
-                />
-              </label>
-              <label className="space-y-1">
-                <span className="text-[10px] uppercase tracking-wider text-ink/40">Workflow run id</span>
-                <input
-                  value={graphRunId}
-                  onChange={(e) => setGraphRunId(e.target.value)}
-                  placeholder="optional"
-                  className="bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[11px] font-mono min-w-[14rem]"
-                />
-              </label>
-              <button
-                type="button"
-                onClick={() => void loadGraph()}
-                disabled={graphBusy}
-                className="px-3 py-1.5 border border-ink/[0.08] text-[11px] text-ink/55 hover:text-ink/80"
-              >
-                Filter
-              </button>
-            </div>
-            <div className="overflow-auto max-h-[32rem]">
-              <table className="w-full text-[11px]">
-                <thead>
-                  <tr className="text-ink/40 text-left border-b border-ink/[0.06]">
-                    <th className="py-2 pr-2">Source</th>
-                    <th className="py-2 pr-2">Relationship</th>
-                    <th className="py-2 pr-2">Target</th>
-                    <th className="py-2 pr-2">Type</th>
-                    <th className="py-2 pr-2">Confidence</th>
-                    <th className="py-2 pr-2">Run</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {graphEdges.map((edge) => (
-                    <tr key={edge.id} className="border-b border-ink/[0.04] text-ink/65">
-                      <td className="py-2 pr-2 font-mono">{edge.source_value}</td>
-                      <td className="py-2 pr-2 text-ink/50">{edge.relationship_type}</td>
-                      <td className="py-2 pr-2 font-mono">{edge.target_value}</td>
-                      <td className="py-2 pr-2">{edge.target_type}</td>
-                      <td className="py-2 pr-2">{edge.confidence != null ? edge.confidence.toFixed(2) : '—'}</td>
-                      <td className="py-2 pr-2 font-mono text-ink/45 truncate max-w-[8rem]">
-                        {edge.workflow_run_id ? `${edge.workflow_run_id.slice(0, 12)}…` : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                  {!graphEdges.length && (
-                    <tr><td colSpan={6} className="py-6 text-center text-ink/35">No graph edges yet — run collection with auto-discover strategies</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
-
-        {tab === 'intelligence' && (
-          <section className="space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-[10px] uppercase tracking-wider text-ink/45">Intelligence Core — Claims, Knowledge, Evidence</div>
-              <button type="button" onClick={() => void loadIntelligence()} disabled={intelBusy} className="text-[10px] text-ink/45 hover:text-ink/70">
-                {intelBusy ? 'Loading…' : 'Refresh'}
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3">
-                <div className="text-[10px] uppercase tracking-wider text-ink/45">Target dashboard</div>
-                <div className="overflow-auto max-h-48">
-                  <table className="w-full text-[11px]">
-                    <tbody>
-                      {intelDashboard.map((t) => (
-                        <tr key={String(t.target_value)} className="border-b border-ink/[0.04] text-ink/65">
-                          <td className="py-1.5 pr-2 font-mono">{String(t.target_value)}</td>
-                          <td className="py-1.5 pr-2">{String(t.observations ?? 0)} obs</td>
-                          <td className="py-1.5 text-ink/45">{String(t.graph_edges ?? 0)} edges</td>
-                        </tr>
-                      ))}
-                      {!intelDashboard.length && (
-                        <tr><td className="py-4 text-ink/35">Run bootstrap to refresh read models</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3 lg:col-span-2">
-                <div className="text-[10px] uppercase tracking-wider text-ink/45">Knowledge objects</div>
-                <div className="overflow-auto max-h-48">
-                  <table className="w-full text-[11px]">
-                    <thead>
-                      <tr className="text-ink/40 text-left border-b border-ink/[0.06]">
-                        <th className="py-2 pr-2">Kind</th>
-                        <th className="py-2 pr-2">Title</th>
-                        <th className="py-2">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {intelKnowledge.map((k) => (
-                        <tr key={k.id} className="border-b border-ink/[0.04] text-ink/65">
-                          <td className="py-2 pr-2 font-mono text-ink/50">{k.kind}</td>
-                          <td className="py-2 pr-2">{k.title}</td>
-                          <td className="py-2">{k.status}</td>
-                        </tr>
-                      ))}
-                      {!intelKnowledge.length && (
-                        <tr><td colSpan={3} className="py-4 text-center text-ink/35">No knowledge objects yet</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            <div className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3">
-              <div className="text-[10px] uppercase tracking-wider text-ink/45">Claims & reasoning</div>
-              {selectedFinding && (
-                <div className="flex flex-wrap items-end gap-2 border border-ink/[0.06] p-3">
-                  <span className="text-[11px] text-ink/50">From finding: <code className="text-ink/70">{selectedFinding.value}</code></span>
-                  <input
-                    value={claimDraft}
-                    onChange={(e) => setClaimDraft(e.target.value)}
-                    placeholder="Claim statement…"
-                    className="flex-1 min-w-[16rem] bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[12px] text-ink/70"
-                  />
-                  <button
-                    type="button"
-                    disabled={busy === 'claim' || !claimDraft.trim()}
-                    onClick={() => void createClaimFromFinding()}
-                    className="px-3 py-1.5 border border-ink/20 text-[11px] text-ink/70 hover:bg-ink/[0.04]"
-                  >
-                    Create claim
-                  </button>
-                </div>
-              )}
-              <div className="overflow-auto">
-                <table className="w-full text-[11px]">
-                  <thead>
-                    <tr className="text-ink/40 text-left border-b border-ink/[0.06]">
-                      <th className="py-2 pr-2">Statement</th>
-                      <th className="py-2 pr-2">Status</th>
-                      <th className="py-2 pr-2">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {intelClaims.map((c) => (
-                      <tr key={c.id} className="border-b border-ink/[0.04] text-ink/65">
-                        <td className="py-2 pr-2 max-w-md truncate" title={c.statement}>{c.statement}</td>
-                        <td className="py-2 pr-2">{c.status}</td>
-                        <td className="py-2 pr-2 space-x-2">
-                          <button type="button" onClick={() => void evaluateClaimById(c.id)} className="text-ink/50 hover:text-ink/80">Evaluate</button>
-                          <button type="button" onClick={() => void bundleEvidence(c.id, `Evidence: ${c.statement.slice(0, 40)}`)} className="text-ink/50 hover:text-ink/80">Bundle</button>
-                        </td>
-                      </tr>
-                    ))}
-                    {!intelClaims.length && (
-                      <tr><td colSpan={3} className="py-4 text-center text-ink/35">Select a finding and create a claim, or use the API</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3">
-              <div className="text-[10px] uppercase tracking-wider text-ink/45">Evidence bundles</div>
-              <div className="overflow-auto">
-                <table className="w-full text-[11px]">
-                  <thead>
-                    <tr className="text-ink/40 text-left border-b border-ink/[0.06]">
-                      <th className="py-2 pr-2">Title</th>
-                      <th className="py-2 pr-2">Claim</th>
-                      <th className="py-2">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {intelEvidence.map((e) => (
-                      <tr key={e.id} className="border-b border-ink/[0.04] text-ink/65">
-                        <td className="py-2 pr-2">{e.title}</td>
-                        <td className="py-2 pr-2 font-mono text-ink/45 text-[10px]">{e.claim_id || '—'}</td>
-                        <td className="py-2">{e.status}</td>
-                      </tr>
-                    ))}
-                    {!intelEvidence.length && (
-                      <tr><td colSpan={3} className="py-4 text-center text-ink/35">Evaluate a claim, then bundle evidence</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {tab === 'feeds' && (
-          <section>
-            <FeedIntelligenceExplorer />
-          </section>
-        )}
-
-        {tab === 'architecture' && (
-          <section>
-            <ArchitectureExplorer />
-          </section>
-        )}
-
-        {tab === 'platform' && platformConfig && (
-          <section className="space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-[10px] uppercase tracking-wider text-ink/45">
-                Platform — schedulers, feeds, Judicium integration
-              </div>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => void loadPlatform()} disabled={!!platformBusy} className="text-[10px] text-ink/45 hover:text-ink/70">Refresh</button>
-                <button type="button" onClick={() => void savePlatform()} disabled={!!platformBusy} className="px-3 py-1 border border-ink/[0.12] text-[11px] text-ink/70 hover:text-ink/90">
-                  {platformBusy === 'save' ? 'Saving…' : 'Save config'}
-                </button>
-              </div>
-            </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3">
-                <div className="text-[10px] uppercase tracking-wider text-ink/45">Collection scheduler</div>
-                <label className="flex items-center gap-2 text-[11px] text-ink/60">
-                  <input type="checkbox" checked={Boolean((platformConfig.scheduler as Record<string, unknown>)?.enabled)} onChange={(e) => patchPlatform(['scheduler', 'enabled'], e.target.checked)} />
-                  Scheduler enabled
-                </label>
-                <label className="flex items-center gap-2 text-[11px] text-ink/60">
-                  <input type="checkbox" checked={Boolean(((platformConfig.scheduler as Record<string, unknown>)?.cascadesDuePull as Record<string, unknown>)?.enabled)} onChange={(e) => patchPlatform(['scheduler', 'cascadesDuePull', 'enabled'], e.target.checked)} />
-                  Cascades due pull (passive-domain-collection)
-                </label>
-                <div className="flex items-center gap-2 text-[11px] text-ink/55">
-                  <span>Due interval (min)</span>
-                  <input type="number" min={5} className="w-20 bg-ink/[0.04] border border-ink/[0.08] px-2 py-1 font-mono" value={Number(((platformConfig.scheduler as Record<string, unknown>)?.cascadesDuePull as Record<string, unknown>)?.intervalMinutes || 60)} onChange={(e) => patchPlatform(['scheduler', 'cascadesDuePull', 'intervalMinutes'], Number(e.target.value))} />
-                </div>
-                <label className="flex items-center gap-2 text-[11px] text-ink/60">
-                  <input type="checkbox" checked={Boolean(((platformConfig.scheduler as Record<string, unknown>)?.dailyPull as Record<string, unknown>)?.enabled)} onChange={(e) => patchPlatform(['scheduler', 'dailyPull', 'enabled'], e.target.checked)} />
-                  Daily pull cycle
-                </label>
-                <select className="bg-ink/[0.04] border border-ink/[0.08] px-2 py-1 text-[11px]" value={String(((platformConfig.scheduler as Record<string, unknown>)?.dailyPull as Record<string, unknown>)?.mode || 'cascades-due')} onChange={(e) => patchPlatform(['scheduler', 'dailyPull', 'mode'], e.target.value)}>
-                  <option value="cascades-due">Cascades due (in-process)</option>
-                  <option value="shell">Shell daily-pull.sh</option>
-                  <option value="both">Both</option>
-                  <option value="disabled">Disabled</option>
-                </select>
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {['cascades-due', 'daily-pull'].map((kind) => (
-                    <button key={kind} type="button" disabled={!!platformBusy} onClick={() => void runPlatformJob(kind)} className="flex items-center gap-1 px-2 py-1 border border-ink/[0.1] text-[10px] text-ink/60 hover:text-ink/85">
-                      <Play size={10} /> Run {kind}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3">
-                <div className="text-[10px] uppercase tracking-wider text-ink/45">Module: Community Feeds</div>
-                <div className="text-[10px] text-ink/35 font-mono">community-feeds@1.2.0 · Harvest-owned · Judicium consumes via proxy</div>
-                <label className="flex items-center gap-2 text-[11px] text-ink/60">
-                  <input type="checkbox" checked={Boolean(((platformConfig.modules as Record<string, unknown>)?.communityFeeds as Record<string, unknown>)?.enabled ?? (platformConfig.communityFeeds as Record<string, unknown>)?.enabled)} onChange={(e) => patchPlatform(['modules', 'communityFeeds', 'enabled'], e.target.checked)} />
-                  Feeds worker enabled
-                </label>
-                <label className="flex items-center gap-2 text-[11px] text-ink/60">
-                  <input type="checkbox" checked={Boolean(((platformConfig.modules as Record<string, unknown>)?.communityFeeds as Record<string, unknown>)?.delegateFromJudicium ?? (platformConfig.communityFeeds as Record<string, unknown>)?.delegateFromJudicium)} onChange={(e) => patchPlatform(['modules', 'communityFeeds', 'delegateFromJudicium'], e.target.checked)} />
-                  Judicium delegates community pull to Harvest
-                </label>
-                <label className="flex items-center gap-2 text-[11px] text-ink/60">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(
-                      (platformConfig.modules as { communityFeeds?: { enrichment?: { autoOnIngest?: boolean } } })?.communityFeeds?.enrichment?.autoOnIngest ?? true,
-                    )}
-                    onChange={(e) => patchPlatform(['modules', 'communityFeeds', 'enrichment', 'autoOnIngest'], e.target.checked)}
-                  />
-                  Enrich keywords on ingest
-                </label>
-                <label className="flex items-center gap-2 text-[11px] text-ink/60">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(
-                      (platformConfig.modules as { communityFeeds?: { expansion?: { enabled?: boolean } } })?.communityFeeds?.expansion?.enabled ?? true,
-                    )}
-                    onChange={(e) => patchPlatform(['modules', 'communityFeeds', 'expansion', 'enabled'], e.target.checked)}
-                  />
-                  Keyword expansion API enabled
-                </label>
-                <label className="flex items-center gap-2 text-[11px] text-ink/60">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(
-                      (platformConfig.modules as { communityFeeds?: { expansion?: { defaultEnqueue?: boolean } } })?.communityFeeds?.expansion?.defaultEnqueue,
-                    )}
-                    onChange={(e) => patchPlatform(['modules', 'communityFeeds', 'expansion', 'defaultEnqueue'], e.target.checked)}
-                  />
-                  Expansion default-enqueues Cascades
-                </label>
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {['feeds-layers', 'feeds-rss', 'feeds-daily'].map((kind) => (
-                    <button key={kind} type="button" disabled={!!platformBusy} onClick={() => void runPlatformJob(kind)} className="flex items-center gap-1 px-2 py-1 border border-ink/[0.1] text-[10px] text-ink/60 hover:text-ink/85">
-                      <Play size={10} /> {kind.replace('feeds-', '')}
-                    </button>
-                  ))}
-                  <a href="/api/platform/modules/community-feeds/contract" target="_blank" rel="noreferrer" className="px-2 py-1 border border-ink/[0.1] text-[10px] text-ink/50 hover:text-ink/75">Contract JSON</a>
-                </div>
-              </div>
-            </div>
-            <div className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3">
-              <div className="text-[10px] uppercase tracking-wider text-ink/45">Judicium env (copy to judicium compose)</div>
-              {Boolean((platformStatus?.judicium as Record<string, unknown> | undefined)?.suggestedEnv) && (
-                <pre className="text-[10px] font-mono text-ink/45 bg-ink/[0.03] border border-ink/[0.06] p-3 overflow-auto">
-                  {JSON.stringify((platformStatus?.judicium as Record<string, unknown>).suggestedEnv, null, 2)}
-                </pre>
-              )}
-            </div>
-            {Boolean(platformStatus?.scheduler) && (
-              <pre className="text-[10px] font-mono text-ink/45 border border-ink/[0.05] p-3 overflow-auto max-h-48">{JSON.stringify(platformStatus?.scheduler, null, 2)}</pre>
-            )}
-          </section>
-        )}
-
-        {tab === 'sources' && <SourceInventoryPanel />}
-        {tab === 'enrichment' && <EnrichmentPanel />}
-        {tab === 'rss-sources' && <RssSourcesPanel />}
-
-        {tab === 'ops' && (
-          <>
-        {opsMetrics && (
-          <section className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {[
-              { label: 'Targets enabled', value: (opsMetrics.targets as { enabled?: number })?.enabled ?? '—' },
-              { label: 'Due now', value: (opsMetrics.targets as { due?: number })?.due ?? '—' },
-              { label: 'Obs today', value: (opsMetrics.observationsPersistedToday as number) ?? '—' },
-              { label: 'Findings today', value: (opsMetrics.findings as { today?: number })?.today ?? '—' },
-              { label: 'Connector errors', value: (opsMetrics.providerErrors24h as number) ?? '—' },
-              { label: 'Healthy connectors', value: `${(opsMetrics.connectorHealth as { healthy?: number })?.healthy ?? 0}/${(opsMetrics.connectorHealth as { total?: number })?.total ?? 0}` },
-            ].map((c) => (
-              <div key={c.label} className="border border-ink/[0.05] bg-ink/[0.015] p-3">
-                <div className="text-[10px] uppercase tracking-wider text-ink/40">{c.label}</div>
-                <div className="mt-1 text-xl font-mono font-light text-ink/70">{c.value}</div>
-              </div>
-            ))}
-          </section>
-        )}
-
-        <section className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-[10px] uppercase tracking-wider text-ink/45">Connector Health (24h)</div>
-            <button type="button" onClick={() => void loadOps()} className="text-[10px] text-ink/45 hover:text-ink/70">Refresh</button>
-          </div>
-          <div className="overflow-auto">
-            <table className="w-full text-[11px]">
-              <thead>
-                <tr className="text-ink/40 text-left border-b border-ink/[0.06]">
-                  <th className="py-2 pr-2">Connector</th>
-                  <th className="py-2 pr-2">Status</th>
-                  <th className="py-2 pr-2">Success</th>
-                  <th className="py-2 pr-2">Avg ms</th>
-                  <th className="py-2 pr-2">Last success</th>
-                </tr>
-              </thead>
-              <tbody>
-                {connectorHealth.map((c) => (
-                  <tr key={c.connector} className="border-b border-ink/[0.04] text-ink/65">
-                    <td className="py-2 pr-2 font-mono">{c.connector}</td>
-                    <td className="py-2 pr-2">{c.status}</td>
-                    <td className="py-2 pr-2">{c.successRate != null ? `${c.successRate}%` : '—'}</td>
-                    <td className="py-2 pr-2">{c.avgDurationMs ?? '—'}</td>
-                    <td className="py-2 pr-2 text-ink/45">{c.lastSuccess ? new Date(c.lastSuccess).toLocaleString() : '—'}</td>
-                  </tr>
-                ))}
-                {!connectorHealth.length && (
-                  <tr><td colSpan={5} className="py-4 text-center text-ink/35">No connector events yet</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3">
-          <div className="text-[10px] uppercase tracking-wider text-ink/45">Provider Dashboard (24h)</div>
-          <div className="overflow-auto">
-            <table className="w-full text-[11px]">
-              <thead>
-                <tr className="text-ink/40 text-left border-b border-ink/[0.06]">
-                  <th className="py-2 pr-2">Provider</th>
-                  <th className="py-2 pr-2">Status</th>
-                  <th className="py-2 pr-2">Runs</th>
-                  <th className="py-2 pr-2">Failures</th>
-                  <th className="py-2 pr-2">Observations</th>
-                  <th className="py-2 pr-2">Avg ms</th>
-                </tr>
-              </thead>
-              <tbody>
-                {providers.map((p) => (
-                  <tr key={p.connector} className="border-b border-ink/[0.04] text-ink/65">
-                    <td className="py-2 pr-2 font-mono">{p.connector}</td>
-                    <td className="py-2 pr-2">{p.status}</td>
-                    <td className="py-2 pr-2">{p.runs24h}</td>
-                    <td className="py-2 pr-2">{p.failures24h}</td>
-                    <td className="py-2 pr-2">{p.observations24h}</td>
-                    <td className="py-2 pr-2">{p.avgDurationMs ?? '—'}</td>
-                  </tr>
-                ))}
-                {!providers.length && (
-                  <tr><td colSpan={6} className="py-4 text-center text-ink/35">No provider stats yet</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {summaryCards.map((c) => (
-            <div key={c.label} className="border border-ink/[0.05] bg-ink/[0.015] p-3">
-              <div className="text-[10px] uppercase tracking-wider text-ink/40">{c.label}</div>
-              <div className={cn('mt-1 text-ink/70', c.small ? 'text-[11px]' : 'text-xl font-mono font-light')}>
-                {c.value}
-              </div>
-            </div>
-          ))}
-        </section>
-
-        {data?.daily && (
-          <section className="border border-ink/[0.05] bg-ink/[0.015] p-4 text-[12px]">
-            <div className="flex items-center gap-2 mb-3 text-[10px] uppercase tracking-wider text-ink/45">
-              <Database size={12} /> Daily cron summary
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <div><span className="text-ink/35">Products</span><p className="font-mono text-ink/65">{data.daily.products || '—'}</p></div>
-              <div><span className="text-ink/35">Findings</span><p className="font-mono text-ink/65">{data.daily.totalFindings ?? 0}</p></div>
-              <div><span className="text-ink/35">Inserted</span><p className="font-mono text-ink/65">{data.daily.totalInserted ?? 0}</p></div>
-              <div><span className="text-ink/35">Failed</span><p className="font-mono text-ink/65">{data.daily.failed ?? 0}</p></div>
-              <div><span className="text-ink/35">Window</span><p className="font-mono text-ink/55 text-[11px]">{data.daily.startedAt || '—'} → {data.daily.finishedAt || '—'}</p></div>
-            </div>
-          </section>
-        )}
-
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3">
-            <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-ink/45">
-              <Play size={12} /> Run collection
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-[12px]">
-              <label className="space-y-1">
-                <span className="text-ink/40 text-[10px]">Product</span>
-                <select
-                  value={form.product}
-                  onChange={(e) => setForm((f) => ({ ...f, product: e.target.value }))}
-                  className="w-full bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-ink/70"
-                >
-                  <option value="h3xa">h3xa</option>
-                  <option value="judicium">judicium</option>
-                </select>
-              </label>
-              <label className="space-y-1">
-                <span className="text-ink/40 text-[10px]">Case ID (optional)</span>
-                <input
-                  value={form.caseId}
-                  onChange={(e) => setForm((f) => ({ ...f, caseId: e.target.value }))}
-                  className="w-full bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-ink/70"
-                  placeholder="1"
-                />
-              </label>
-              <label className="space-y-1 col-span-2">
-                <span className="text-ink/40 text-[10px]">Target</span>
-                <input
-                  value={form.target}
-                  onChange={(e) => setForm((f) => ({ ...f, target: e.target.value }))}
-                  className="w-full bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-ink/70"
-                />
-              </label>
-              <label className="space-y-1 col-span-2">
-                <span className="text-ink/40 text-[10px]">Collection strategy</span>
-                <select
-                  value={form.strategy}
-                  onChange={(e) => setForm((f) => ({ ...f, strategy: e.target.value }))}
-                  className="w-full bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-ink/70 text-[11px]"
-                >
-                  {strategies.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-                {strategies.find((s) => s.id === form.strategy)?.description && (
-                  <p className="text-[10px] text-ink/35 pt-1">
-                    {strategies.find((s) => s.id === form.strategy)?.description}
-                  </p>
-                )}
-              </label>
-            </div>
-            <div className="flex flex-wrap gap-2 pt-1">
-              <button
-                disabled={!!busy}
-                onClick={() => void triggerRun('single')}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-ink text-canvas text-[11px] font-semibold disabled:opacity-40"
-              >
-                <Crosshair size={12} /> {busy === 'single' ? 'Starting…' : 'Run target'}
-              </button>
-              <button
-                disabled={!!busy}
-                onClick={() => void triggerRun('daily')}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-ink/[0.12] text-[11px] text-ink/70 disabled:opacity-40"
-              >
-                <Play size={12} /> {busy === 'daily' ? 'Starting…' : 'Run daily pull'}
-              </button>
-              <button
-                disabled={!!busy}
-                onClick={() => void triggerRun('daily-dry')}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-ink/[0.08] text-[11px] text-ink/45 disabled:opacity-40"
-              >
-                <Terminal size={12} /> Dry-run daily
-              </button>
-            </div>
-          </div>
-
-          <div className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-ink/45">
-                <FileText size={12} /> targets.txt
-              </div>
-              <button
-                disabled={!!busy || !targetsDirty}
-                onClick={() => void saveTargets()}
-                className="px-3 py-1 border border-ink/[0.1] text-[11px] text-ink/60 disabled:opacity-30"
-              >
-                {busy === 'targets' ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-            <textarea
-              value={targetsText}
-              onChange={(e) => {
-                setTargetsText(e.target.value);
-                setTargetsDirty(true);
-              }}
-              spellCheck={false}
-              className="w-full h-48 bg-noir-bg border border-ink/[0.08] p-3 font-mono text-[11px] text-ink/65 resize-y"
-            />
-            <p className="text-[10px] text-ink/35">
-              Formats: <code>domain</code> · <code>domain case_id</code> · <code>product domain case_id</code>
-            </p>
-          </div>
-        </section>
-
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="border border-ink/[0.05] bg-ink/[0.015] p-4">
-            <div className="flex items-center gap-2 mb-3 text-[10px] uppercase tracking-wider text-ink/45">
-              <ListTree size={12} /> By source
-            </div>
-            <div className="space-y-1 max-h-56 overflow-y-auto">
-              {(data?.bySource || []).map((row) => (
-                <div key={row.source} className="flex justify-between text-[11px] px-2 py-1 border border-ink/[0.03]">
-                  <span className="text-ink/60 truncate">{row.source}</span>
-                  <span className="font-mono text-ink/45">{row.count}</span>
-                </div>
-              ))}
-              {!data?.bySource?.length && <p className="text-[11px] text-ink/30">No findings yet</p>}
-            </div>
-          </div>
-          <div className="border border-ink/[0.05] bg-ink/[0.015] p-4">
-            <div className="flex items-center gap-2 mb-3 text-[10px] uppercase tracking-wider text-ink/45">
-              <ListTree size={12} /> By entity type
-            </div>
-            <div className="space-y-1 max-h-56 overflow-y-auto">
-              {(data?.byEntityType || []).map((row) => (
-                <div key={row.entity_type} className="flex justify-between text-[11px] px-2 py-1 border border-ink/[0.03]">
-                  <span className="text-ink/60 truncate">{row.entity_type}</span>
-                  <span className="font-mono text-ink/45">{row.count}</span>
-                </div>
-              ))}
-              {!data?.byEntityType?.length && <p className="text-[11px] text-ink/30">No findings yet</p>}
-            </div>
-          </div>
-        </section>
-
-        <section className="border border-ink/[0.05] bg-ink/[0.015] p-4">
-          <div className="flex items-center gap-2 mb-3 text-[10px] uppercase tracking-wider text-ink/45">
-            <Radar size={12} /> Recent runs
-          </div>
-          <div className="space-y-1">
-            {(data?.runs || []).map((run) => (
-              <button
-                key={run.id}
-                type="button"
-                onClick={() => setSelectedRun(run.id)}
-                className={cn(
-                  'w-full flex items-center gap-3 px-3 py-2 border text-left text-[11px]',
-                  selectedRun === run.id ? 'border-ink/20 bg-ink/[0.03]' : 'border-ink/[0.03] hover:border-ink/[0.08]',
-                )}
-              >
-                <span className={cn('px-1.5 py-0.5 shrink-0', statusTone(run.status))}>{run.status}</span>
-                <span className="font-mono text-ink/70 truncate max-w-[160px]">{run.target}</span>
-                {run.case_id != null && <span className="text-ink/35">case #{run.case_id}</span>}
-                <span className="text-ink/45">{run.total_findings} found · {run.inserted} in · {run.skipped} skip</span>
-                <span className="text-ink/25 ml-auto">{run.started_at ? new Date(run.started_at).toLocaleString() : ''}</span>
-              </button>
-            ))}
-            {!data?.runs?.length && (
-              <div className="flex flex-col items-center py-10 text-ink/25">
-                <Check size={20} className="mb-2 opacity-40" />
-                <p className="text-xs">No harvest runs yet</p>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {runDetail && (
-          <section className="border border-ink/[0.05] bg-ink/[0.015] p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="text-[10px] uppercase tracking-wider text-ink/45">
-                Run {runDetail.run.id}
-              </div>
-              <button onClick={() => setSelectedRun(null)} className="text-[11px] text-ink/40 hover:text-ink/70">Close</button>
-            </div>
-            <div className="text-[11px] text-ink/50 font-mono">
-              {runDetail.run.target} · {runDetail.run.status} · findings {runDetail.findings.length}
-            </div>
-            <div className="max-h-72 overflow-y-auto space-y-0.5">
-              {runDetail.findings.map((f) => (
-                <div key={f.id} className="flex gap-3 px-2 py-1.5 border border-ink/[0.03] text-[11px]">
-                  <span className="text-ink/35 w-24 shrink-0 truncate">{f.source}</span>
-                  <span className="text-ink/30 w-16 shrink-0">{f.entity_type}</span>
-                  <span className="text-ink/70 truncate flex-1">{f.value || f.title}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <section className="border border-ink/[0.05] bg-ink/[0.015] p-4">
-          <div className="flex items-center gap-2 mb-3 text-[10px] uppercase tracking-wider text-ink/45">
-            Latest findings
-          </div>
-          <div className="space-y-0.5 max-h-80 overflow-y-auto">
-            {(data?.recentFindings || []).map((f) => (
-              <div key={f.id} className="flex gap-3 px-2 py-1.5 border border-ink/[0.03] text-[11px]">
-                <span className="text-ink/35 w-24 shrink-0 truncate">{f.source}</span>
-                <span className="text-ink/30 w-16 shrink-0">{f.entity_type}</span>
-                <span className="text-ink/70 truncate flex-1">{f.value || f.title}</span>
-                <span className="text-ink/20 ml-auto shrink-0">
-                  {f.created_at ? new Date(f.created_at).toLocaleString() : ''}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-          </>
-        )}
-          </>
-        )}
-      </main>
+      <HarvestDockview
+        className="flex-1"
+        panels={PANELS}
+        onReady={setDockviewApi}
+        defaultOpen={['findings']}
+      />
     </div>
   );
 };

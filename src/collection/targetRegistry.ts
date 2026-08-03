@@ -18,6 +18,7 @@ import type {
 } from './types.js';
 import {
   normalizeWorkflowId,
+  defaultTemplateForAssetType,
 } from './templates.js';
 import { defaultWorkflowForAssetType, getCatalogWorkflow } from './workflow-catalog.js';
 import { defaultStrategyForWorkflow, getCollectionStrategy } from './strategies.js';

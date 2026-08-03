@@ -14,21 +14,23 @@
 :root {
   --radius: 0;
 
-  /* Core noir surfaces — cool dark with gentle blue chroma.
-     Subtle luminance lift keeps depth while reducing eye strain. */
-  --noir-bg: oklch(17.888% 0.01042 276.381);
-  --noir-surface: oklch(24.212% 0.00888 255.649);
-  --noir-elevated: oklch(30.063% 0.01168 264.412);
-  --noir-card: oklch(19.535% 0.00868 264.378);
-  --noir-border: oklch(0.35 0.011 245 / 0.6);
-  --noir-border-strong: oklch(0.48 0.013 245 / 0.5);
-  --noir-accent: oklch(0.985 0 0);
-  --noir-muted: oklch(0.72 0 0);
-  --noir-faint: oklch(0.62 0 0);
-  --noir-success: rgb(var(--ink-rgb) / 0.88);
-  --noir-error: #f87171;
-  --noir-warning: #fbbf24;
-  --noir-info: rgb(var(--ink-rgb) / 0.72);
+  /* Core noir surfaces — deep navy canvas → progressive white layers.
+     bg: true depth. surface: chrome/header step. elevated: light —
+     crisp white-toned for dropdowns/modals. card: near-white paper.
+     Borders visible across the full tonal range. */
+  --noir-bg:            oklch(18.6% 0.011 268);
+  --noir-surface:       oklch(30.4% 0.009 258);
+  --noir-elevated:      oklch(48.6% 0.004 264);
+  --noir-card:          oklch(54.2% 0.003 262);
+  --noir-border:        oklch(48.2% 0.008 260 / 0.55);
+  --noir-border-strong: oklch(56.5% 0.010 260 / 0.60);
+  --noir-accent:        oklch(0.985 0 0);
+  --noir-muted:         oklch(0.82 0 0);
+  --noir-faint:         oklch(0.62 0 0);
+  --noir-success:       rgb(var(--ink-rgb) / 0.88);
+  --noir-error:         #f87171;
+  --noir-warning:       #fbbf24;
+  --noir-info:          rgb(var(--ink-rgb) / 0.72);
   /* Signature electric accent — used sparingly for interaction / active / data. */
   --noir-accent-cyan: oklch(0.82 0.135 216);
   --noir-accent-cyan-soft: oklch(0.82 0.135 216 / 0.14);
@@ -39,6 +41,8 @@
      one variable. Dark: white ink on dark surfaces. (Light theme overrides below.) */
   --ink: #ffffff;
   --ink-rgb: 255 255 255;
+  --ink-muted: rgb(255 255 255 / 0.68);
+  --ink-faint:  rgb(255 255 255 / 0.38);
 
   /* Semantic palette (shadcn / Radix compatible) */
   --background: var(--noir-bg);
@@ -96,45 +100,45 @@
    utilities re-theme automatically. Dark remains the default & unchanged.
 ----------------------------------- */
 :root[data-theme="light"] {
-  /* Tonal gray scale — each surface has a distinct temperature and density.
-     Warm undertones on outer layers, cool undertones on inner layers for
-     a natural architectural depth (darker surfaces recede, lighter advance). */
-  --noir-bg: oklch(96.81% 0.00817 278.543);
-  --noir-surface: oklch(91.453% 0.00819 286.055);
-  --noir-elevated: #d6d7de;
-  --noir-card: oklch(78.35% 0.00428 285.997);
-  --noir-border: oklch(0.48 0.02 250 / 0.24);
-  --noir-border-strong: oklch(0.48 0.02 250 / 0.40);
-  --noir-accent: oklch(0.18 0.028 260);
-  --noir-muted: oklch(0.38 0.02 260);
-  --noir-faint: oklch(0.50 0.015 260);
-  --noir-success: oklch(0.45 0.18 145);
-  --noir-error: #b91c1c;
-  --noir-warning: #92400e;
-  --noir-info: oklch(0.38 0.02 260);
-  --noir-accent-cyan: oklch(0.50 0.18 233);
-  --noir-accent-cyan-soft: oklch(0.50 0.18 233 / 0.10);
-  --noir-link: var(--noir-accent-cyan);
-  --noir-alert: #b91c1c;
+  /* ─── Editorial light theme — warm paper stock, crisp white elevation,
+     hairline borders, deep navy ink, restrained accent ──────────── */
+  --noir-bg:            oklch(97.8% 0.004 92);
+  --noir-surface:       oklch(94.6% 0.007 88);
+  --noir-elevated:      oklch(99.2% 0.002 94);
+  --noir-card:          oklch(98.6% 0.003 90);
+  --noir-border:        oklch(80% 0.006 92 / 0.38);
+  --noir-border-strong: oklch(70% 0.008 92 / 0.48);
+  --noir-accent:        oklch(0.20 0.032 263);
+  --noir-muted:         oklch(0.44 0.012 260);
+  --noir-faint:         oklch(0.62 0.008 260);
+  --noir-success:       oklch(0.42 0.16 155);
+  --noir-error:         oklch(0.40 0.18 22);
+  --noir-warning:       oklch(0.50 0.14 72);
+  --noir-info:          oklch(0.40 0.05 255);
+  --noir-accent-cyan:   oklch(0.42 0.10 248);
+  --noir-accent-cyan-soft: oklch(0.42 0.10 248 / 0.10);
+  --noir-link:          var(--noir-accent);
+  --noir-alert:         oklch(0.40 0.18 22);
 
-  --primary: oklch(0.18 0.028 260);
-  --primary-foreground: #ffffff;
-  --ring: oklch(0.50 0.18 233 / 0.45);
-  --selection-background: oklch(0.50 0.18 233 / 0.18);
+  --primary:            var(--noir-accent);
+  --primary-foreground: oklch(0.99 0.001 92);
+  --ring:               oklch(0.42 0.10 248 / 0.38);
+  --selection-background: oklch(0.42 0.10 248 / 0.14);
 
-  /* Strong text — deeper slate for crisp readability on light surfaces. */
-  --ink: #0b1120;
-  --ink-rgb: 11 17 32;
+  --ink:                oklch(0.09 0.022 260);
+  --ink-rgb:            14 22 38;
+  --ink-muted:          oklch(0.09 0.022 260 / 0.65);
+  --ink-faint:          oklch(0.09 0.022 260 / 0.32);
 
   color-scheme: light;
 }
 
-/* Light-theme refinements for surfaces that hardcode a dark palette (the
-   command scene, glass panels, lifecycle tabs) so the primary dashboard reads
-   correctly in light. Softer neutral elevation replaces heavy dark shadows. */
+/* ─── Light-theme component refinements (editorial) ─────────── */
 :root[data-theme="light"] .card,
 :root[data-theme="light"] .stat-card {
-  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06), 0 1px 3px rgb(15 23 42 / 0.03);
+  box-shadow: 0 0 0 1px oklch(85% 0.006 92 / 0.5),
+              0 1px 3px oklch(20% 0.02 260 / 0.04),
+              0 4px 12px oklch(20% 0.02 260 / 0.03);
 }
 :root[data-theme="light"] .investigation-command-scene,
 :root[data-theme="light"] .investigation-command-scene__map {
@@ -142,39 +146,40 @@
 }
 :root[data-theme="light"] .investigation-command-scene__map-vignette {
   background:
-    radial-gradient(ellipse 90% 70% at 50% 45%, transparent 0%, oklch(0.985 0.003 250 / 0.4) 55%, oklch(0.985 0.003 250 / 0.9) 100%),
-    linear-gradient(to bottom, oklch(0.985 0.003 250 / 0.6) 0%, transparent 22%, transparent 72%, oklch(0.985 0.003 250 / 0.95) 100%);
+    radial-gradient(ellipse 90% 70% at 50% 45%, transparent 0%, oklch(97% 0.004 92 / 0.35) 55%, oklch(97% 0.004 92 / 0.85) 100%),
+    linear-gradient(to bottom, oklch(97% 0.004 92 / 0.55) 0%, transparent 22%, transparent 72%, oklch(97% 0.004 92 / 0.9) 100%);
 }
+
 :root[data-theme="light"] .investigation-command-scene__map-grid {
   background-image:
-    linear-gradient(oklch(0.24 0.02 260 / 0.5) 1px, transparent 1px),
-    linear-gradient(90deg, oklch(0.24 0.02 260 / 0.5) 1px, transparent 1px);
+    linear-gradient(oklch(0.55 0.015 260 / 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.55 0.015 260 / 0.18) 1px, transparent 1px);
 }
 :root[data-theme="light"] .investigation-command-scene__sticky {
-  background: linear-gradient(to bottom, oklch(0.985 0.003 250 / 0.95) 0%, oklch(0.985 0.003 250 / 0.8) 70%, transparent 100%);
+  background: linear-gradient(to bottom, oklch(99% 0.003 92 / 0.95) 0%, oklch(99% 0.003 92 / 0.78) 70%, transparent 100%);
 }
 :root[data-theme="light"] .investigation-lifecycle-tabs__tab {
   border-color: var(--noir-border);
-  background: rgb(255 255 255 / 0.55);
+  background: oklch(99.5% 0.002 92 / 0.6);
   color: var(--noir-muted);
 }
 :root[data-theme="light"] .investigation-lifecycle-tabs__tab:hover {
   color: var(--noir-accent);
   border-color: var(--noir-border-strong);
-  background: #ffffff;
+  background: oklch(100% 0 0);
 }
 :root[data-theme="light"] .investigation-lifecycle-tabs__tab--active {
   color: var(--noir-accent);
-  border-color: oklch(0.24 0.02 260 / 0.22);
-  background: rgb(15 23 42 / 0.06);
+  border-color: oklch(0.42 0.10 248 / 0.22);
+  background: oklch(0.42 0.10 248 / 0.06);
 }
 :root[data-theme="light"] .void-glass,
 :root[data-theme="light"] .void-glass-panel {
-  background: rgb(255 255 255 / 0.82);
+  background: oklch(99.5% 0.002 92 / 0.84);
   border-color: var(--noir-border);
 }
 :root[data-theme="light"] .void-glass-stat {
-  background: rgb(255 255 255 / 0.6);
+  background: oklch(100% 0 0 / 0.65);
   border-color: var(--noir-border);
 }
 :root[data-theme="light"] .void-glass-stat__label { color: var(--noir-muted); }
@@ -1364,4 +1369,59 @@ select:focus {
 
 .search-origin-badge {
   letter-spacing: 0.14em;
+}
+
+/* ═══════════════════════════════════════════
+   Dockview — Harvest Noir Theme
+   IDE-like docking panels with drag-drop,
+   split views, floating windows, and tabs.
+   ═══════════════════════════════════════════ */
+
+.dockview-theme-noir {
+  --dv-group-view-background-color: var(--noir-bg);
+  --dv-tabs-and-actions-container-background-color: var(--noir-surface);
+  --dv-tabs-and-actions-container-height: 30px;
+  --dv-tabs-and-actions-container-font-size: 11px;
+
+  --dv-activegroup-visiblepanel-tab-background-color: var(--noir-bg);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--noir-surface);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--noir-bg);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--noir-surface);
+
+  --dv-tab-divider-color: var(--noir-border);
+  --dv-activegroup-visiblepanel-tab-color: var(--ink);
+  --dv-activegroup-hiddenpanel-tab-color: var(--ink-muted);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--ink-muted);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--ink-faint);
+
+  --dv-separator-border: var(--noir-border);
+  --dv-paneview-header-border-color: var(--noir-border);
+  --dv-paneview-active-outline-color: var(--noir-accent);
+
+  --dv-scrollbar-background-color: var(--ink-faint, rgba(255,255,255,0.15));
+  --dv-drag-over-background-color: oklch(0.45 0.03 250 / 0.3);
+  --dv-drag-over-border-color: var(--noir-accent, oklch(0.55 0.1 260));
+  --dv-drag-over-border: 1px solid var(--noir-accent);
+
+  --dv-floating-box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.3);
+  --dv-floating-border: 1px solid var(--noir-border);
+  --dv-floating-group-border: 1px solid var(--noir-border);
+
+  --dv-icon-hover-background-color: var(--ink-muted, rgba(255,255,255,0.08));
+  --dv-tabs-container-scrollbar-color: var(--ink-faint, rgba(255,255,255,0.2));
+
+  /* Sashes (splitter handles) */
+  --dv-sash-color: transparent;
+  --dv-active-sash-color: var(--noir-accent);
+  --dv-active-sash-transition-duration: 0.2s;
+  --dv-active-sash-transition-delay: 0.1s;
+  --dv-sash-border-radius: 2px;
+
+  --dv-overlay-z-index: 999;
+  --dv-tab-font-size: inherit;
+  --dv-tab-margin: 0;
+  --dv-spacing-padding: 0px;
+  --dv-tab-border-radius: 0px;
+  --dv-dropdown-border-radius: 4px;
+  --dv-tab-close-icon-size: 10px;
 }

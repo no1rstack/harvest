@@ -34,7 +34,7 @@ import {
   deleteFeedSource,
 } from '../feeds/rssFeedRegistry.js';
 import { buildDailySourcesDigest } from '../feeds/dailySourcesDigest.js';
-import { CRUCIX_FEED_SEEDS } from '../feeds/crucixFeedSeeds.js';
+import { CRUCIX_FEED_SEEDS, CRUCIX_API_SEEDS } from '../feeds/crucixFeedSeeds.js';
 import {
   filterLegalFeedCatalog,
   LEGAL_DISCOVERY_SITES,
@@ -424,6 +424,16 @@ export function registerFeedsRoutes(app: Express): void {
             discoveredVia: 'crucix-seed',
           });
         }
+      } else if (pack === 'crucix-full') {
+        for (const seed of CRUCIX_API_SEEDS.slice(0, limit)) {
+          seeds.push({
+            name: seed.name,
+            siteUrl: seed.siteUrl,
+            feedUrl: seed.feedUrl,
+            category: `crucix:${seed.category}`,
+            discoveredVia: 'crucix-pack',
+          });
+        }
       } else if (pack === 'worldmonitor') {
         const catalog = await fetchWorldMonitorFeedCatalog();
         const filtered = filterWorldMonitorCatalog(catalog.feeds, {
@@ -480,7 +490,7 @@ export function registerFeedsRoutes(app: Express): void {
           });
         }
       } else {
-        return res.status(400).json({ error: 'pack must be crucix, worldmonitor, legal, or freshrss' });
+        return res.status(400).json({ error: 'pack must be crucix, crucix-full, worldmonitor, legal, or freshrss' });
       }
 
       const seen = new Set<string>();

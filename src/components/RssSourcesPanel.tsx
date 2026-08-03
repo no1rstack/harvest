@@ -54,6 +54,9 @@ export function RssSourcesPanel() {
   const [catFilter, setCatFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'ok' | 'errored' | 'unknown'>('all');
   const [sourceFilter, setSourceFilter] = useState('');
+  const [cadenceFilter, setCadenceFilter] = useState('');
+  const [lastCheckFilter, setLastCheckFilter] = useState('');
+  const [pullFilter, setPullFilter] = useState('');
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
@@ -113,8 +116,22 @@ export function RssSourcesPanel() {
     if (statusFilter === 'ok') rows = rows.filter(s => s.lastOkAt && !s.lastError);
     else if (statusFilter === 'errored') rows = rows.filter(s => s.lastError && !s.lastOkAt);
     else if (statusFilter === 'unknown') rows = rows.filter(s => !s.lastOkAt && !s.lastError);
+    if (cadenceFilter === 'fast') rows = rows.filter(s => (s.adaptiveIntervalMinutes || 15) <= 15);
+    else if (cadenceFilter === 'hourly') rows = rows.filter(s => { const c = (s.adaptiveIntervalMinutes || 15); return c > 15 && c <= 60; });
+    else if (cadenceFilter === 'slow') rows = rows.filter(s => { const c = (s.adaptiveIntervalMinutes || 15); return c > 60 && c <= 360; });
+    else if (cadenceFilter === 'daily') rows = rows.filter(s => (s.adaptiveIntervalMinutes || 15) > 360);
+    if (lastCheckFilter) {
+      const now = Date.now();
+      const thresholds: Record<string, number> = { hour: 3600_000, today: 86400_000, week: 604800_000 };
+      const limit = thresholds[lastCheckFilter];
+      if (limit) rows = rows.filter(s => s.lastCheckedAt && (now - new Date(s.lastCheckedAt).getTime()) <= limit);
+      else if (lastCheckFilter === 'older') rows = rows.filter(s => !s.lastCheckedAt || (now - new Date(s.lastCheckedAt).getTime()) > 604800_000);
+      else if (lastCheckFilter === 'never') rows = rows.filter(s => !s.lastCheckedAt);
+    }
+    if (pullFilter === 'auto') rows = rows.filter(s => s.autoPull);
+    else if (pullFilter === 'manual') rows = rows.filter(s => !s.autoPull);
     return rows;
-  }, [data, search, catFilter, statusFilter, sourceFilter]);
+  }, [data, search, catFilter, statusFilter, sourceFilter, cadenceFilter, lastCheckFilter, pullFilter]);
 
   const allSelected = filtered.length > 0 && selected.size >= filtered.length;
   const someSelected = selected.size > 0 && !allSelected;
@@ -327,6 +344,7 @@ export function RssSourcesPanel() {
                 { id: 'crucix', label: 'Crucix (5 feeds)', desc: 'SBS, Indian Express, MercoPress, Al Jazeera' },
                 { id: 'worldmonitor', label: 'World Monitor (225)', desc: 'AGPL open-source catalog' },
                 { id: 'legal', label: 'Legal RSS (59)', desc: 'JD Supra, L&S, Cornell LII, courts' },
+                { id: 'crucix-full', label: 'Crucix Full (29 sources)', desc: '27 OSINT APIs: GDELT, FIRMS, AIS, OFAC, FRED, EIA, NOAA, WHO, CISA...' },
                 { id: 'freshrss', label: 'FreshRSS Scraping (17)', desc: 'XPath-based scraping for sites w/o RSS' },
               ].map(p => (
                 <button key={p.id}
@@ -369,25 +387,46 @@ export function RssSourcesPanel() {
         {showFilters && (
           <div className="flex gap-2 flex-wrap items-center">
             <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
-              className="bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[11px] text-ink/60">
+              className="bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[11px] text-ink/60 min-w-[8rem]">
               <option value="">All categories</option>
               {categories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}
-              className="bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[11px] text-ink/60">
+              className="bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[11px] text-ink/60 min-w-[8rem]">
               <option value="">All sources</option>
               {sourceGroups.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
-            <div className="flex gap-0.5">
-              {(['all','ok','errored','unknown'] as const).map(f => (
-                <button key={f} onClick={() => setStatusFilter(f)}
-                  className={cn('px-2.5 py-1.5 text-[10px] border',
-                    statusFilter === f ? 'border-ink/[0.15] bg-ink/[0.04] text-ink/70' : 'border-ink/[0.06] text-ink/35')}>
-                  {f === 'all' ? 'All' : f === 'ok' ? 'OK' : f === 'errored' ? 'Errors' : 'Unknown'}
-                </button>
-              ))}
-            </div>
-            <button onClick={() => { setSearch(''); setCatFilter(''); setStatusFilter('all'); setSourceFilter(''); }}
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)}
+              className="bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[11px] text-ink/60 min-w-[6rem]">
+              <option value="all">Status: All</option>
+              <option value="ok">✓ OK</option>
+              <option value="errored">✕ Errors</option>
+              <option value="unknown">— Unknown</option>
+            </select>
+            <select value={cadenceFilter} onChange={e => setCadenceFilter(e.target.value)}
+              className="bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[11px] text-ink/60 min-w-[7rem]">
+              <option value="">Cadence: All</option>
+              <option value="fast">≤ 15m</option>
+              <option value="hourly">15m – 1h</option>
+              <option value="slow">1h – 6h</option>
+              <option value="daily">{'>'} 6h</option>
+            </select>
+            <select value={lastCheckFilter} onChange={e => setLastCheckFilter(e.target.value)}
+              className="bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[11px] text-ink/60 min-w-[8rem]">
+              <option value="">Last Check: All</option>
+              <option value="hour">Last hour</option>
+              <option value="today">Today</option>
+              <option value="week">This week</option>
+              <option value="older">Older</option>
+              <option value="never">Never</option>
+            </select>
+            <select value={pullFilter} onChange={e => setPullFilter(e.target.value)}
+              className="bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[11px] text-ink/60 min-w-[6rem]">
+              <option value="">Pull: All</option>
+              <option value="auto">Auto</option>
+              <option value="manual">Manual</option>
+            </select>
+            <button onClick={() => { setSearch(''); setCatFilter(''); setStatusFilter('all'); setSourceFilter(''); setCadenceFilter(''); setLastCheckFilter(''); setPullFilter(''); }}
               className="text-[10px] text-ink/25 hover:text-ink/50">Reset filters</button>
           </div>
         )}
@@ -418,7 +457,7 @@ export function RssSourcesPanel() {
       {/* Results count */}
       <div className="text-[10px] uppercase tracking-wider text-ink/30">
         {filtered.length} of {data.total} sources
-        {(search || catFilter || statusFilter !== 'all' || sourceFilter) && ` (filtered)`}
+        {(search || catFilter || statusFilter !== 'all' || sourceFilter || cadenceFilter || lastCheckFilter || pullFilter) && ` (filtered)`}
       </div>
 
       {/* Table */}
@@ -437,7 +476,7 @@ export function RssSourcesPanel() {
           <span className="text-right">Pull</span>
         </div>
 
-        <div className="max-h-[calc(100vh-30rem)] overflow-y-auto divide-y divide-ink/[0.03]">
+        <div className="max-h-[calc(100vh-12rem)] overflow-y-auto divide-y divide-ink/[0.03]">
           {filtered.map(s => {
             const isSelected = selected.has(s.id);
             const isBusy = busy === `pull-${s.id}`;
@@ -516,7 +555,7 @@ export function RssSourcesPanel() {
         <summary className="px-3 py-2 text-[10px] uppercase tracking-wider text-ink/25 cursor-pointer hover:text-ink/45 select-none">
           {data.curated.length} curated always-on feeds (pulled at base 15m cadence)
         </summary>
-        <div className="divide-y divide-ink/[0.02] max-h-[16rem] overflow-y-auto">
+        <div className="divide-y divide-ink/[0.02] max-h-[24rem] overflow-y-auto">
           {data.curated.map(f => (
             <div key={f.url} className="grid grid-cols-[2fr_3fr_6rem] gap-2 px-3 py-1.5 text-[10px]">
               <span className="text-ink/35 truncate">{f.name}</span>

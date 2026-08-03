@@ -75,7 +75,7 @@ export function EnrichmentPanel() {
     .slice(0, 20);
 
   return (
-    <section className="space-y-6">
+    <section className="h-full overflow-y-auto space-y-6 px-2 pb-8">
       {/* header */}
       <div className="flex items-center justify-between">
         <div>
