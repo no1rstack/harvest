@@ -20,6 +20,7 @@ import {
 } from '../feeds/communityIntelligence.js';
 import {
   getCommunityPullStatusAsync,
+  pullCrucixApis,
   pullFeedSource,
   pullFreeLayers,
   pullRssDigest,
@@ -244,6 +245,7 @@ export function registerFeedsRoutes(app: Express): void {
         const { pullSharedCorpus } = await import('../feeds/communityPullWorker.js');
         return res.json({ which: 'corpus', results: await pullSharedCorpus() });
       }
+      if (which === 'crucix') return res.json({ which: 'crucix', results: await pullCrucixApis() });
       res.json({ which: 'daily', ...(await runCommunityDailyPull()) });
     } catch (err: unknown) {
       res.status(500).json({ error: (err as Error).message });

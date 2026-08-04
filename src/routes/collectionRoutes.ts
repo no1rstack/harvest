@@ -53,6 +53,7 @@ import {
   bridgeFindingsToH3xa,
   bridgeWorkflowRunToH3xa,
 } from '../collection/intelligence-bridge.js';
+import { pullAllJudicium } from '../collection/judicium-pull.js';
 import type { CollectionTargetInput } from '../collection/types.js';
 
 const TARGETS_FILE = path.join(process.cwd(), 'scripts/osint-harvest/targets.txt');
@@ -383,7 +384,7 @@ export function registerCollectionRoutes(app: Express): void {
       if (!pool) return;
       const ok = await deleteTarget(pool, req.params.id);
       if (!ok) return res.status(404).json({ error: 'Target not found' });
-      res.json({ ok: true });
+      res.json({ ok: true, retired: true });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -615,6 +616,19 @@ export function registerCollectionRoutes(app: Express): void {
         merge: req.body?.merge || {},
         dryRun: Boolean(req.body?.dryRun),
       });
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  /** Pull data from Judicium into Harvest (bidirectional sync). */
+  app.post('/api/collection/judicium/pull', async (req, res) => {
+    try {
+      const pool = poolOr503(res);
+      if (!pool) return;
+      const limit = parseInt(String(req.body?.limit || '1000'), 10) || 1000;
+      const result = await pullAllJudicium(pool, { limit });
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: err.message });

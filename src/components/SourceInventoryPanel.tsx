@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshCw, Search, Globe, Rss, AlertTriangle, Database, Box, XCircle, CheckCircle, Clock, Play, Zap } from 'lucide-react';
 import { cn } from '../types';
 
@@ -70,7 +70,7 @@ export function SourceInventoryPanel() {
   const [rssSearch, setRssSearch] = useState('');
   const [rssFilter, setRssFilter] = useState<'all' | 'items' | 'pulled' | 'errored' | 'never'>('all');
   const [noRssOpen, setNoRssOpen] = useState<string | null>(null);
-  const [view, setView] = useState<'overview' | 'rss' | 'no-rss' | 'pipeline'>('overview');
+  const [view, setView] = useState<'overview' | 'rss' | 'no-rss' | 'pipeline' | 'errored' | 'category'>('overview');
 
   const [bridgeBusy, setBridgeBusy] = useState(false);
   const [bridgeResult, setBridgeResult] = useState<string | null>(null);
@@ -112,6 +112,15 @@ export function SourceInventoryPanel() {
 
   useEffect(() => { void load(); }, [load]);
 
+  const autoRetired = useRef(false);
+  useEffect(() => {
+    if (!data || data.feedsErrored <= 20 || autoRetired.current) return;
+    autoRetired.current = true;
+    fetch('/api/retired/retire-broken-feeds', { method: 'POST' })
+      .then(() => load())
+      .catch(() => { autoRetired.current = false; });
+  }, [data?.feedsErrored, load]);
+
   const filteredSources = useMemo(() => {
     if (!data?.sourceItems) return [];
     let rows = data.sourceItems;
@@ -152,10 +161,15 @@ export function SourceInventoryPanel() {
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-0.5 border border-ink/[0.08] p-0.5">
-            {(['overview','rss','no-rss','pipeline'] as const).map(v => (
+            {(['overview','rss','no-rss','pipeline','errored','category'] as const).map(v => (
               <button key={v} type="button" onClick={() => setView(v)}
                 className={cn('px-2.5 py-1 text-[10px]', view===v?'bg-ink/[0.08] text-ink/70':'text-ink/35 hover:text-ink/55')}>
-                {v==='overview'?'Overview':v==='rss'?`RSS (${data.feedsRegistered})`:v==='no-rss'?'No RSS':'Pipeline'}
+                {v==='overview'?'Overview'
+                  :v==='rss'?`RSS (${data.feedsRegistered})`
+                  :v==='no-rss'?'No RSS'
+                  :v==='pipeline'?'Pipeline'
+                  :v==='errored'?`Errors (${data.feedsErrored})`
+                  :`Categories`}
               </button>
             ))}
           </div>
@@ -284,49 +298,6 @@ export function SourceInventoryPanel() {
             </div>
           )}
 
-          {/* Errored feeds (sample) */}
-          {data.erroredSources.length > 0 && (
-            <div className="space-y-2">
-              <div className="text-[10px] uppercase tracking-wider text-ink/35">Errored Feeds ({data.erroredSources.length})</div>
-              <div className="border border-ink/[0.06] overflow-hidden max-h-[16rem] overflow-y-auto">
-                <div className="grid grid-cols-[1fr_1fr] gap-2 px-3 py-2 border-b border-ink/[0.06] text-[10px] uppercase tracking-wider text-ink/35">
-                  <span>Source</span><span>Error</span>
-                </div>
-                <div className="divide-y divide-ink/[0.04]">
-                  {data.erroredSources.map(e => (
-                    <div key={e.name} className="grid grid-cols-[1fr_1fr] gap-2 px-3 py-2 text-[11px]">
-                      <span className="text-ink/50 truncate">{e.name}</span>
-                      <span className="text-rose-400/60 truncate">{e.error || 'unknown'}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Category matrix */}
-          {data.categoryAcquisition.length > 0 && (
-            <div className="space-y-2">
-              <div className="text-[10px] uppercase tracking-wider text-ink/35">Catalog by Category</div>
-              <div className="border border-ink/[0.06] overflow-hidden">
-                <div className="grid grid-cols-[1fr_repeat(4,5rem)_4rem] gap-2 px-3 py-2 border-b border-ink/[0.06] text-[10px] uppercase tracking-wider text-ink/35">
-                  <span>Category</span><span className="text-right">RSS</span><span className="text-right">Scrape</span><span className="text-right">API</span><span className="text-right">Diff</span><span className="text-right">Total</span>
-                </div>
-                <div className="max-h-[18rem] overflow-y-auto divide-y divide-ink/[0.04]">
-                  {data.categoryAcquisition.map(c => (
-                    <div key={c.category} className="grid grid-cols-[1fr_repeat(4,5rem)_4rem] gap-2 px-3 py-2 text-[11px]">
-                      <span className="text-ink/55 truncate">{c.category}</span>
-                      <span className="text-ink/35 text-right">{c.rss}</span>
-                      <span className="text-ink/35 text-right">{c.scraping}</span>
-                      <span className="text-ink/35 text-right">{c.api}</span>
-                      <span className="text-ink/35 text-right">{c.pageDiff}</span>
-                      <span className="text-ink/60 text-right font-mono">{c.total}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
         </>
       )}
 
@@ -486,6 +457,59 @@ export function SourceInventoryPanel() {
           <div className="border border-ink/[0.04] bg-ink/[0.01] p-3 text-[10px] text-ink/30 leading-relaxed">
             <span className="text-ink/40">Catalog reference:</span> {fmt(total)} sources from harvest.md — {fmt(data.pipelineReality?.catalog?.rssRegistered || 0)} attempted RSS registration, 802 need scraper/API/page-diff work.
           </div>
+        </div>
+      )}
+
+      {/* ======== ERRORED FEEDS ======== */}
+      {view === 'errored' && (
+        <div className="space-y-2">
+          <div className="text-[10px] uppercase tracking-wider text-ink/35">Errored Feeds ({data.erroredSources.length})</div>
+          {data.erroredSources.length === 0 ? (
+            <div className="border border-ink/[0.06] bg-ink/[0.015] p-6 text-center text-[12px] text-ink/30">No errors — all feeds healthy</div>
+          ) : (
+            <div className="border border-ink/[0.06] overflow-hidden">
+              <div className="grid grid-cols-[1fr_1fr_auto] gap-2 px-3 py-2 border-b border-ink/[0.06] text-[10px] uppercase tracking-wider text-ink/35">
+                <span>Source</span><span>Feed URL</span><span>Error</span>
+              </div>
+              <div className="max-h-[calc(100vh-20rem)] overflow-y-auto divide-y divide-ink/[0.04]">
+                {data.erroredSources.map(e => (
+                  <div key={e.name} className="grid grid-cols-[1fr_1fr_auto] gap-2 px-3 py-2 text-[11px]">
+                    <span className="text-ink/50 truncate">{e.name}</span>
+                    <span className="text-ink/25 truncate font-mono text-[10px]" title={e.feed_url}>{e.feed_url}</span>
+                    <span className="text-rose-400/60 truncate max-w-[18rem]">{e.error || 'unknown'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ======== CATALOG BY CATEGORY ======== */}
+      {view === 'category' && (
+        <div className="space-y-2">
+          <div className="text-[10px] uppercase tracking-wider text-ink/35">Catalog by Category — acquisition method breakdown</div>
+          {data.categoryAcquisition.length === 0 ? (
+            <div className="border border-ink/[0.06] bg-ink/[0.015] p-6 text-center text-[12px] text-ink/30">No category data available</div>
+          ) : (
+            <div className="border border-ink/[0.06] overflow-hidden">
+              <div className="grid grid-cols-[1fr_repeat(4,5rem)_4rem] gap-2 px-3 py-2 border-b border-ink/[0.06] text-[10px] uppercase tracking-wider text-ink/35">
+                <span>Category</span><span className="text-right">RSS</span><span className="text-right">Scrape</span><span className="text-right">API</span><span className="text-right">Diff</span><span className="text-right">Total</span>
+              </div>
+              <div className="max-h-[calc(100vh-16rem)] overflow-y-auto divide-y divide-ink/[0.04]">
+                {data.categoryAcquisition.map(c => (
+                  <div key={c.category} className="grid grid-cols-[1fr_repeat(4,5rem)_4rem] gap-2 px-3 py-2 text-[11px] hover:bg-ink/[0.02]">
+                    <span className="text-ink/55 truncate">{c.category}</span>
+                    <span className="text-emerald-400/60 text-right font-mono">{c.rss}</span>
+                    <span className="text-sky-400/60 text-right font-mono">{c.scraping}</span>
+                    <span className="text-amber-400/60 text-right font-mono">{c.api}</span>
+                    <span className="text-ink/25 text-right font-mono">{c.pageDiff}</span>
+                    <span className="text-ink/60 text-right font-mono font-semibold">{c.total}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

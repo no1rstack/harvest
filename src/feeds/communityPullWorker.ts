@@ -18,6 +18,8 @@ import { aggregateRssDigest, type DigestNewsItem, type FeedDef } from './rssDige
 import { listDueFeedSources, adjustFeedCadence, listFeedSources, touchFeedSourceHealth, type CommunityFeedSource } from './rssFeedRegistry.js';
 import { loadPlatformConfig } from '../platform/config.js';
 import { fetchAiidCorpus, fetchAptnotesCorpus } from './sharedCorpusPull.js';
+import { collectAllCrucixApis } from './crucixApiCollector.js';
+import { pullAllJudicium } from '../collection/judicium-pull.js';
 
 const FREE_LAYER_IDS: CommunityLayerId[] = ['disasters', 'aviation', 'cyber'];
 
@@ -29,7 +31,7 @@ const DAILY_CATEGORIES = [
 let poolRef: Pool | null = null;
 let started = false;
 let timers: ReturnType<typeof setInterval>[] = [];
-const running = { layers: false, rss: false, daily: false, corpus: false };
+const running = { layers: false, rss: false, daily: false, corpus: false, crucix: false, judiciumPull: false };
 
 export interface CommunityPullResult {
   stream: string;
@@ -309,10 +311,40 @@ export async function pullSharedCorpus(options?: {
   return results;
 }
 
+/** Pull 6 zero-auth Crucix APIs: GDELT, Safecast, ReliefWeb, WHO, OFAC, OpenSanctions. */
+export async function pullCrucixApis(): Promise<CommunityPullResult[]> {
+  const pool = requirePool();
+  if (running.crucix) return [];
+  running.crucix = true;
+  const results: CommunityPullResult[] = [];
+  try {
+    const collected = await collectAllCrucixApis();
+    for (const { stream, items } of collected) {
+      const t0 = Date.now();
+      try {
+        const { upserted } = items.length
+          ? await upsertCommunityItems(pool, items, stream)
+          : { upserted: 0 };
+        results.push({ stream, collected: items.length, persisted: upserted, ms: Date.now() - t0 });
+      } catch (err: unknown) {
+        const msg = (err as Error)?.message || String(err);
+        await markStreamError(pool, stream, msg);
+        results.push({ stream, collected: items.length, persisted: 0, error: msg, ms: Date.now() - t0 });
+      }
+    }
+  } finally {
+    running.crucix = false;
+  }
+  const total = results.reduce((n, r) => n + r.persisted, 0);
+  console.log(`[harvest-feeds] crucix APIs persisted=${total} across ${results.length} streams`);
+  return results;
+}
+
 export async function runCommunityDailyPull(): Promise<{
   layers: CommunityPullResult[];
   rss: CommunityPullResult;
   corpus: CommunityPullResult[];
+  crucix: CommunityPullResult[];
   stats: Awaited<ReturnType<typeof getCommunityStats>>;
   streams: Awaited<ReturnType<typeof listStreamStatus>>;
 }> {
@@ -322,6 +354,7 @@ export async function runCommunityDailyPull(): Promise<{
       layers: [],
       rss: { stream: 'rss', collected: 0, persisted: 0, error: 'daily already running', ms: 0 },
       corpus: [],
+      crucix: [],
       stats: await getCommunityStats(pool, 48),
       streams: await listStreamStatus(pool),
     };
@@ -331,11 +364,13 @@ export async function runCommunityDailyPull(): Promise<{
     const layers = await pullFreeLayers();
     const rss = await pullRssDigest({ maxResults: 250 });
     const corpus = await pullSharedCorpus();
+    const crucix = await pullCrucixApis();
     const pool = requirePool();
     return {
       layers,
       rss,
       corpus,
+      crucix,
       stats: await getCommunityStats(pool, 48),
       streams: await listStreamStatus(pool),
     };
@@ -368,6 +403,8 @@ export function getCommunityPullStatus() {
       { id: 'rss', apis: ['GLOBAL_RSS_FEEDS', 'community_feed_sources'], keyRequired: false },
       { id: 'aiid', apis: ['Judicium AIID corpus'], keyRequired: false },
       { id: 'aptnotes', apis: ['APTnotes GitHub JSON'], keyRequired: false },
+      { id: 'crucix', apis: ['GDELT', 'Safecast', 'ReliefWeb', 'WHO', 'OFAC SDN', 'OpenSanctions'], keyRequired: false },
+      { id: 'judicium-pull', apis: ['intelligence_events', 'feed_items', 'social_posts', 'evidence', 'canonical_entities', 'relationships'], keyRequired: false },
     ],
     store: 'harvest-postgres',
   };
@@ -401,7 +438,7 @@ export function startCommunityFeedsWorker(pool: Pool): void {
   console.log(
     `[harvest-feeds] Worker scheduled — layers ${Math.round(layersMs / 60_000)}m, ` +
       `RSS ${Math.round(rssMs / 60_000)}m, corpus ${Math.round(corpusMs / 3_600_000)}h, ` +
-      `daily ${Math.round(dailyMs / 3_600_000)}h`,
+      `crucix 6h, judicium 2h, daily ${Math.round(dailyMs / 3_600_000)}h`,
   );
 
   setTimeout(() => {
@@ -422,9 +459,35 @@ export function startCommunityFeedsWorker(pool: Pool): void {
     pullSharedCorpus().catch((e) => console.warn('[harvest-feeds] corpus failed:', (e as Error).message));
   }, corpusMs));
 
+  // Crucix zero-auth APIs — every 6 hours
+  timers.push(setInterval(() => {
+    pullCrucixApis().catch((e) => console.warn('[harvest-feeds] crucix failed:', (e as Error).message));
+  }, 6 * 3_600_000));
+
+  // Judicium bidirectional sync — every 2 hours
+  timers.push(setInterval(() => {
+    pullJudiciumSync().catch((e) => console.warn('[harvest-feeds] judicium-pull failed:', (e as Error).message));
+  }, 2 * 3_600_000));
+
   timers.push(setInterval(() => {
     runCommunityDailyPull().catch((e) => console.warn('[harvest-feeds] daily failed:', (e as Error).message));
   }, dailyMs));
+}
+
+/** Pull data from Judicium into Harvest (bidirectional sync). */
+export async function pullJudiciumSync(): Promise<Awaited<ReturnType<typeof pullAllJudicium>>> {
+  const pool = requirePool();
+  if (running.judiciumPull) {
+    return { results: [], total_pulled: 0, total_ingested: 0 };
+  }
+  running.judiciumPull = true;
+  try {
+    const result = await pullAllJudicium(pool);
+    console.log(`[harvest-feeds] judicium-pull: ${result.total_pulled} pulled, ${result.total_ingested} ingested`);
+    return result;
+  } finally {
+    running.judiciumPull = false;
+  }
 }
 
 export function restartCommunityFeedsWorker(pool: Pool): void {

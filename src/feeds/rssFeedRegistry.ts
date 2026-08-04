@@ -253,7 +253,12 @@ export async function adjustFeedCadence(
 
 export async function deleteFeedSource(pool: Pool, id: string): Promise<boolean> {
   await ensureFeedSourcesSchema(pool);
-  const result = await pool.query('DELETE FROM community_feed_sources WHERE id = $1', [id]);
+  const result = await pool.query(
+    `UPDATE community_feed_sources
+     SET enabled = false, auto_pull = false, updated_at = NOW()
+     WHERE id = $1 AND enabled = true`,
+    [id],
+  );
   return (result.rowCount ?? 0) > 0;
 }
 

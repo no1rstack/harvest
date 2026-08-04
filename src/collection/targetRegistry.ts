@@ -321,7 +321,10 @@ export async function upsertTarget(
 }
 
 export async function deleteTarget(pool: Pool, id: string): Promise<boolean> {
-  const r = await pool.query(`DELETE FROM collection_targets WHERE id = $1`, [id]);
+  const r = await pool.query(
+    `UPDATE collection_targets SET enabled = false, updated_at = NOW() WHERE id = $1 AND enabled = true`,
+    [id],
+  );
   return (r.rowCount ?? 0) > 0;
 }
 

@@ -31,6 +31,7 @@ import { registerHarvestV1Routes } from './src/api/v1/routes.js';
 import { registerDataCatalogRoutes } from './src/routes/dataCatalogRoutes.js';
 import { registerSourceInventoryRoutes } from './src/routes/sourceInventoryRoutes.js';
 import { registerEnrichmentRoutes } from './src/routes/enrichmentRoutes.js';
+import { registerRetiredRoutes } from './src/routes/retiredRoutes.js';
 import { registerModuleRoutes, communityFeedsContractHeaders } from './src/routes/moduleRoutes.js';
 import { renderMetricsText } from './src/api/metrics.js';
 import { attachWebFoundation } from './src/lib/web-foundation.js';
@@ -120,6 +121,11 @@ app.use('/api/', (req, res, next) => {
     const got = String(req.headers['x-collection-token'] || '');
     if (expected && got === expected) return next();
   }
+  if (apiPath.startsWith('/api/retired/')) {
+    const expected = process.env.COLLECTION_INTERNAL_TOKEN || '';
+    const got = String(req.headers['x-collection-token'] || '');
+    if (expected && got === expected) return next();
+  }
   const origin = req.headers.origin as string | undefined;
   const referer = req.headers.referer as string | undefined;
   const hostOk = (value: string) =>
@@ -146,6 +152,7 @@ registerModuleRoutes(app);
 registerDataCatalogRoutes(app);
 registerSourceInventoryRoutes(app);
 registerEnrichmentRoutes(app);
+registerRetiredRoutes(app);
 
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {

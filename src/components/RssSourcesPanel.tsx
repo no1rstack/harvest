@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search, Upload, Trash2, Play, RefreshCw, CheckSquare, Square,
   Rss, Globe, Clock, Activity, X, Plus, Filter, ChevronDown,
@@ -88,6 +88,15 @@ export function RssSourcesPanel() {
     return () => clearInterval(t);
   }, [load]);
 
+  const autoRetired = useRef(false);
+  useEffect(() => {
+    if (!data || stats.errored <= 20 || autoRetired.current) return;
+    autoRetired.current = true;
+    fetch('/api/retired/retire-broken-feeds', { method: 'POST' })
+      .then(() => load())
+      .catch(() => { autoRetired.current = false; });
+  }, [data?.sources.length, stats.errored, load]);
+
   const categories = useMemo(() => {
     if (!data) return [];
     const set = new Set(data.sources.map(s => s.category));
@@ -171,7 +180,7 @@ export function RssSourcesPanel() {
 
   const batchDelete = useCallback(async () => {
     if (selected.size === 0) return;
-    if (!confirm(`Delete ${selected.size} RSS sources? This is permanent.`)) return;
+    if (selected.size <= 20 && !confirm(`Retire ${selected.size} RSS source(s)? They'll stop pulling and move to the Retired tab.`)) return;
     setBusy('deleting');
     let ok = 0, err = 0;
     for (const id of selected) {
@@ -181,7 +190,7 @@ export function RssSourcesPanel() {
       } catch { err++; }
     }
     setBusy(null);
-    setImportResult(`Deleted: ${ok} ok, ${err} failed`);
+    setImportResult(`Retired: ${ok} ok, ${err} failed`);
     setSelected(new Set());
     load();
   }, [selected, load]);
@@ -252,7 +261,7 @@ export function RssSourcesPanel() {
     return {
       total: s.length,
       producing: s.filter(x => x.lastOkAt && !x.lastError).length,
-      errored: s.filter(x => x.lastError).length,
+      errored: s.filter(x => x.lastError && x.enabled !== false).length,
       unknown: s.filter(x => !x.lastOkAt && !x.lastError).length,
       avgCadence: Math.round(s.reduce((sum, x) => sum + (x.adaptiveIntervalMinutes || 15), 0) / s.length),
     };
@@ -333,7 +342,32 @@ export function RssSourcesPanel() {
                 className="px-3 py-1.5 bg-ink/[0.08] border border-ink/[0.12] text-[10px] text-ink/70 hover:bg-ink/[0.12] disabled:opacity-30">
                 {importBusy ? 'Importing...' : `Import ${importText.trim() ? importText.split('\n').filter(l => l.trim() && !l.trim().startsWith('#')).length : 0} URLs`}
               </button>
-              <span className="text-[9px] text-ink/25">Format: name | url | category (category optional, defaults to osint)</span>
+              <div className="flex items-center gap-2">
+                <label className="px-2 py-1.5 border border-ink/[0.10] text-[10px] text-ink/50 hover:text-ink/70 cursor-pointer">
+                  <Upload size={10} className="inline mr-1" />
+                  Upload File
+                  <input type="file" accept=".txt,.json,.csv" className="hidden" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      const content = ev.target?.result as string;
+                      if (file.name.endsWith('.json')) {
+                        try {
+                          const j = JSON.parse(content);
+                          const items = Array.isArray(j) ? j : (j.sources || j.feeds || j.disabledFeeds || []);
+                          setImportText(items.map((i: any) => `${i.name || i.title || ''} | ${i.feed_url || i.feedUrl || i.url || ''} | ${i.category || 'osint'}`).join('\n'));
+                        } catch { setImportText(content); }
+                      } else {
+                        setImportText(content);
+                      }
+                    };
+                    reader.readAsText(file);
+                    e.target.value = '';
+                  }} />
+                </label>
+                <span className="text-[9px] text-ink/25">Format: name | url | category (category optional, defaults to osint)</span>
+              </div>
             </div>
           </div>
 
@@ -446,7 +480,7 @@ export function RssSourcesPanel() {
             </button>
             <button onClick={batchDelete} disabled={!!busy}
               className="px-2 py-0.5 border border-rose-400/[0.12] text-[10px] text-rose-400/60 hover:text-rose-400/80">
-              Delete
+              Retire
             </button>
             <button onClick={() => setSelected(new Set())}
               className="ml-auto text-[10px] text-ink/25 hover:text-ink/50">Clear selection</button>
@@ -528,11 +562,11 @@ export function RssSourcesPanel() {
                     {isBusy ? <Activity size={10} className="animate-pulse" /> : <Play size={10} />}
                   </button>
                   <button onClick={() => {
-                    if (confirm(`Delete "${s.name}"?`)) {
+                    if (confirm(`Retire "${s.name}"? It'll stop pulling and move to the Retired tab.`)) {
                       fetch(`/api/feeds/community/sources/${s.id}`, { method: 'DELETE' }).then(() => load());
                     }
                   }}
-                    className="p-0.5 text-ink/10 hover:text-rose-400/50" title="Delete">
+                    className="p-0.5 text-ink/10 hover:text-rose-400/50" title="Retire">
                     <Trash2 size={10} />
                   </button>
                 </div>
