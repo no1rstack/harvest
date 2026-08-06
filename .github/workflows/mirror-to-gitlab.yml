@@ -1,0 +1,27 @@
+name: mirror-to-gitlab
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Mirror to GitLab
+        run: |
+          if [ -z "${{ secrets.GITLAB_TOKEN }}" ]; then
+            echo "SKIP: GITLAB_TOKEN not set"
+            exit 0
+          fi
+          git remote add gitlab "https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.noirstack.com/hexveil/harvest.git"
+          # If the user set a custom GitLab host, use GITLAB_HOST variable
+          if [ -n "${{ vars.GITLAB_HOST }}" ]; then
+            git remote remove gitlab 2>/dev/null || true
+            git remote add gitlab "https://oauth2:${{ secrets.GITLAB_TOKEN }}@${{ vars.GITLAB_HOST }}/hexveil/harvest.git"
+          fi
+          git push --force --quiet gitlab "refs/heads/master:refs/heads/master" "refs/tags/*:refs/tags/*"
+          echo "Mirror to GitLab complete ($(git rev-parse HEAD))"

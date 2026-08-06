@@ -3,6 +3,7 @@
 # VPS shell executor (podman on host).
 
 stages:
+  - mirror
   - test
   - build
   - pre-deploy
@@ -144,6 +145,42 @@ variables:
       echo "ERROR: 0 secrets exported — token may be expired or projectId mismatched" >&2
       exit 1
     fi
+
+# ═══════════════════════════════════════════════════════════════════
+# Stage 0: Mirror to GitHub
+# ═══════════════════════════════════════════════════════════════════
+
+mirror-to-github:
+  stage: mirror
+  <<: *vps_job
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - *ensure_vps_tools
+    - |
+      if [ -z "${GITHUB_TOKEN:-}" ] && [ -z "${GITHUB_MIRROR_USER:-}" ]; then
+        echo "SKIP: no GITHUB_TOKEN or GITHUB_MIRROR_USER set — no GitHub credentials to mirror with"
+        exit 0
+      fi
+
+      MIRROR_URL="https://github.com/no1rstack/harvest.git"
+
+      # Use GITHUB_TOKEN (preferred) or user:token pair
+      if [ -n "${GITHUB_TOKEN:-}" ]; then
+        AUTH_URL="https://${GITHUB_MIRROR_USER:-no1rstack}:${GITHUB_TOKEN}@github.com/no1rstack/harvest.git"
+      elif [ -n "${GITHUB_MIRROR_USER:-}" ] && [ -n "${GITHUB_MIRROR_PASSWORD:-}" ]; then
+        AUTH_URL="https://${GITHUB_MIRROR_USER}:${GITHUB_MIRROR_PASSWORD}@github.com/no1rstack/harvest.git"
+      else
+        echo "ERROR: incomplete GitHub mirror credentials" >&2
+        exit 1
+      fi
+
+      echo "--- Mirroring to GitHub ---"
+      git push --force --quiet "${AUTH_URL}" "refs/heads/master:refs/heads/master" "refs/tags/*:refs/tags/*" 2>&1 || {
+        echo "GitHub mirror push failed (may need GITHUB_TOKEN in GitLab CI variables)"
+      }
+      echo "Mirror to GitHub complete ($(git rev-parse HEAD))"
 
 # ═══════════════════════════════════════════════════════════════════
 # Stage 1: Test
