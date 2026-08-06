@@ -1,11 +1,11 @@
-include:
-  - project: hexveil/hexarchproof
-    ref: main
-    file: /.gitlab-ci-build-template.yml
+# Harvest CI/CD — test → build → GHCR push → deploy → health-check
+#
+# VPS shell executor (podman on host).
 
 stages:
   - test
   - build
+  - pre-deploy
   - deploy
   - health-check
 
@@ -22,12 +22,26 @@ variables:
   INFISICAL_ENV: "prod"
   GIT_DEPTH: "0"
 
+# ── Anchors ──
+
 .ensure_vps_tools: &ensure_vps_tools
   - |
     export PATH="${HOME}/.local/bin:${HOME}/.nvm/versions/node/v24.17.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    missing=0
     for cmd in curl jq podman podman-compose; do
-      command -v "$cmd" >/dev/null || { echo "missing: $cmd"; exit 1; }
+      if ! command -v "$cmd" >/dev/null 2>&1; then
+        echo "missing required tool: $cmd"
+        missing=1
+      fi
     done
+    if [ "$missing" -eq 1 ]; then
+      if command -v dnf >/dev/null 2>&1; then
+        dnf install -y curl jq podman podman-compose
+      else
+        echo "ERROR: VPS deploy tools missing"
+        exit 1
+      fi
+    fi
 
 .vps_job: &vps_job
   tags: [vps, podman, production]
@@ -35,11 +49,105 @@ variables:
 .ensure_node_build: &ensure_node_build
   - |
     export PATH="${HOME}/.nvm/versions/node/v24.17.0/bin:${HOME}/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-    for cmd in node npm; do command -v "$cmd" >/dev/null || exit 1; done
+    for cmd in node npm; do
+      command -v "$cmd" >/dev/null || { echo "missing required tool: $cmd"; exit 1; }
+    done
+    if ! python3 -c "import sysconfig; import os; os.path.exists(sysconfig.get_config_var('INCLUDEPY') or '')" 2>/dev/null; then
+      dnf install -y python3 make gcc-c++ sqlite-devel 2>/dev/null || true
+    fi
 
 .podman_auth: &podman_auth
   before_script:
     - echo "$GHCR_PASSWORD" | podman login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+
+# ── Container health check (podman inspect) ──
+# Uses podman inspect to read health status. Port is not published to VPS host
+# — Traefik routes to Harvest through the shared Podman network.
+.container_health_check: &container_health_check
+  - |
+    MAX_RETRIES="${MAX_RETRIES:-30}"
+    SLEEP_SECONDS="${SLEEP_SECONDS:-5}"
+    echo "--- Waiting for container health (podman inspect) ---"
+    for i in $(seq 1 "$MAX_RETRIES"); do
+      STATUS="$(
+        podman inspect \
+          --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' \
+          "$CONTAINER_NAME" 2>/dev/null || true
+      )"
+      echo "Attempt $i/$MAX_RETRIES - status: ${STATUS:-unknown}"
+      if [ "$STATUS" = "healthy" ]; then
+        echo "Container is healthy"
+        exit 0
+      fi
+      if [ "$STATUS" = "unhealthy" ] || [ "$STATUS" = "exited" ]; then
+        echo "Deployment failed: container status is $STATUS"
+        podman logs --tail 100 "$CONTAINER_NAME" || true
+        exit 1
+      fi
+      sleep "$SLEEP_SECONDS"
+    done
+    echo "Deployment failed: health timeout after $MAX_RETRIES attempts"
+    podman inspect "$CONTAINER_NAME" || true
+    podman logs --tail 100 "$CONTAINER_NAME" || true
+    exit 1
+
+# ── Infisical auth helper ──
+.infisical_auth: &infisical_auth
+  - |
+    echo "--- Infisical auth ---"
+    AUTH_TOKEN=""
+    if [ -n "${INFISICAL_CLIENT_ID:-}" ] && [ -n "${INFISICAL_CLIENT_SECRET:-}" ]; then
+      AUTH_TOKEN="$(
+        infisical login \
+          --method=universal-auth \
+          --client-id="$INFISICAL_CLIENT_ID" \
+          --client-secret="$INFISICAL_CLIENT_SECRET" \
+          --domain="$INFISICAL_DOMAIN" \
+          --plain 2>&1
+      )" || AUTH_TOKEN=""
+      if [ "${#AUTH_TOKEN}" -ge 100 ] && echo "$AUTH_TOKEN" | grep -qv '^error:'; then
+        export INFISICAL_TOKEN="$AUTH_TOKEN"
+        echo "Universal Auth ok — token=${#INFISICAL_TOKEN} chars"
+      else
+        echo "Universal Auth returned $(echo "$AUTH_TOKEN" | head -1) — falling back to INFISICAL_TOKEN CI variable"
+        AUTH_TOKEN=""
+      fi
+    fi
+  - |
+    if [ -z "${AUTH_TOKEN:-}" ]; then
+      if [ -z "${INFISICAL_TOKEN:-}" ] || [ "${#INFISICAL_TOKEN}" -lt 50 ]; then
+        echo "FATAL: no valid Infisical authentication available"
+        echo "  Set INFISICAL_CLIENT_ID + INFISICAL_CLIENT_SECRET for machine identity, or"
+        echo "  set INFISICAL_TOKEN to a valid service token in GitLab CI variables."
+        exit 1
+      fi
+      echo "Using INFISICAL_TOKEN CI variable (${#INFISICAL_TOKEN} chars)"
+    fi
+
+# ── Export secrets to .env.vps ──
+.export_infisical_env: &export_infisical_env
+  - |
+    echo "--- Exporting secrets to ${ENV_FILE} ---"
+    export INFISICAL_DISABLE_UPDATE=true
+    infisical export \
+      --projectId "$INFISICAL_WORKSPACE_ID" \
+      --env "$INFISICAL_ENV" \
+      --domain "$INFISICAL_DOMAIN" \
+      --format dotenv 2>&1 \
+    | grep -v "^A new\|^To update" \
+    | sed "s/='\\(.*\\)'/=\\1/" \
+    | grep -v "^$" \
+    > "${ENV_FILE}"
+    LINES=$(wc -l < "${ENV_FILE}")
+    echo "Wrote ${LINES} secrets to ${ENV_FILE}"
+    if [ "$LINES" -eq 0 ]; then
+      echo "ERROR: 0 secrets exported — token may be expired or projectId mismatched" >&2
+      exit 1
+    fi
+
+# ═══════════════════════════════════════════════════════════════════
+# Stage 1: Test
+# ═══════════════════════════════════════════════════════════════════
 
 test:
   stage: test
@@ -52,6 +160,10 @@ test:
     - npx esbuild server.ts --bundle --platform=node --format=esm --outfile=/tmp/server-check.js
     - npx tsc --noEmit 2>&1 | tail -30 || true
     - npx vitest run tests/intelligence-phase0.test.ts
+
+# ═══════════════════════════════════════════════════════════════════
+# Stage 2: Build frontend
+# ═══════════════════════════════════════════════════════════════════
 
 build:
   stage: build
@@ -75,16 +187,24 @@ build:
       - .infisical.json
     expire_in: 1 day
 
+# ═══════════════════════════════════════════════════════════════════
+# Stage 3: Build + push container to GHCR
+# ═══════════════════════════════════════════════════════════════════
+
 build-image:
   stage: deploy
   tags: [vps, podman, production]
-  <<: *podman_auth
   script:
     - *ensure_vps_tools
+    - echo "$GHCR_PASSWORD" | podman login ghcr.io -u "$GHCR_USERNAME" --password-stdin
     - |
-      podman build --network host --security-opt seccomp=unconfined \
-        -t "$IMAGE_NAME:latest" -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" \
-        -f Containerfile .
+      podman build \
+        --network host \
+        --security-opt seccomp=unconfined \
+        -t "$IMAGE_NAME:latest" \
+        -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" \
+        -f Containerfile \
+        .
     - podman push "$IMAGE_NAME:latest"
     - podman push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
   rules:
@@ -92,23 +212,84 @@ build-image:
   needs:
     - build
 
-deploy:
-  stage: deploy
-  <<: *vps_job
+# ═══════════════════════════════════════════════════════════════════
+# Stage 4a: Clean stale podman state before deploy
+# ═══════════════════════════════════════════════════════════════════
+
+vps-cleanup:
+  stage: pre-deploy
+  tags: [vps, podman, production]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: always
   script:
     - *ensure_vps_tools
-    - chmod +x deploy.sh
-    - ./deploy.sh
+    - podman container prune -f 2>/dev/null || true
+    - podman image prune -f 2>/dev/null || true
+    - echo "Stale podman containers and images pruned"
+
+# ═══════════════════════════════════════════════════════════════════
+# Stage 4b: Deploy to production
+# ═══════════════════════════════════════════════════════════════════
+
+deploy:
+  stage: deploy
+  tags: [vps, podman, production]
+  environment:
+    name: production
+    url: https://harvest.noirstack.com
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   needs:
     - build-image
+  script:
+    - set -Eeuo pipefail
+    - "trap 'rc=$?; echo \"DEPLOY FAILED line ${LINENO}: ${BASH_COMMAND}; exit code=${rc}\"' ERR"
+    - *ensure_vps_tools
+    # ── Infisical: authenticate ──
+    - *infisical_auth
+    # ── Export secrets to .env.vps ──
+    - *export_infisical_env
+    # ── Deploy ──
+    - echo "$GHCR_PASSWORD" | podman login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+    - export IMAGE_TAG="${CI_COMMIT_SHORT_SHA:-latest}"
+    - |
+      echo "--- Current podman state ---"
+      podman ps || true
+    - |
+      echo "--- Pulling latest image ---"
+      podman pull "$IMAGE_NAME:latest"
+    - |
+      echo "--- Deploying ---"
+      IMAGE_TAG="${CI_COMMIT_SHORT_SHA:-latest}" \
+        podman-compose \
+          -p "${COMPOSE_PROJECT_NAME}" \
+          -f "${COMPOSE_FILE}" \
+          --env-file "${ENV_FILE}" \
+          up -d --force-recreate --remove-orphans
+    - |
+      echo "--- Post-deploy state ---"
+      podman ps || true
+    # ── Container health check ──
+    - *container_health_check
+
+# ═══════════════════════════════════════════════════════════════════
+# Stage 5: Post-deploy HTTP health check
+# ═══════════════════════════════════════════════════════════════════
 
 health-check:
   stage: health-check
   <<: *vps_job
   script:
-    - curl -fsS https://harvest.noirstack.com/api/health
+    - *ensure_vps_tools
+    - |
+      sleep 30
+      HEALTH=$(curl -s -o /dev/null -w "%{http_code}" https://harvest.noirstack.com/api/health || echo "000")
+      if [ "$HEALTH" != "200" ]; then
+        echo "Health check FAILED: HTTP $HEALTH"
+        exit 1
+      fi
+      echo "Health check PASSED: HTTP $HEALTH"
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   needs:
