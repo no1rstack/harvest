@@ -109,12 +109,12 @@ export function RssSourcesPanel() {
 
   const autoRetired = useRef(false);
   useEffect(() => {
-    if (!data || stats.errored <= 20 || autoRetired.current) return;
+    if (!data || !stats || stats.errored <= 20 || autoRetired.current) return;
     autoRetired.current = true;
     fetch('/api/retired/retire-broken-feeds', { method: 'POST' })
       .then(() => load())
       .catch(() => { autoRetired.current = false; });
-  }, [data?.sources.length, stats.errored, load]);
+  }, [data?.sources.length, stats?.errored, load]);
 
   const categories = useMemo(() => {
     if (!data) return [];
