@@ -19,14 +19,23 @@ function rewriteDbUrl(baseUrl: string, user: string, db: string): string {
   return baseUrl.replace(/\/[^/?]+(\?|$)/, `/${db}$1`).replace(/:\/\/[^:]+:/, `://${user}:`);
 }
 
+function hostify(url: string): string {
+  // Match harvestPostgres.ts hostify — rewrite postgres-main when running outside podman
+  if (process.env.HARVEST_PG_HOST_REWRITE === '0') return url;
+  return url.replace(/@postgres-main:5432\b/g, '@127.0.0.1:5499');
+}
+
 export function getDatabaseConfigs(): DatabaseConfig[] {
   const harvestUrl = process.env.HARVEST_DATABASE_URL;
   const configs: DatabaseConfig[] = [];
-  if (harvestUrl) configs.push({ id: 'harvest', label: 'Harvest', owner: 'harvest', url: harvestUrl });
-  const jud = process.env.DATA_CATALOG_JUDICIUM_DATABASE_URL || (harvestUrl ? rewriteDbUrl(harvestUrl, 'judicium_user', 'judicium') : '');
-  if (jud) configs.push({ id: 'judicium', label: 'Judicium PG', owner: 'judicium', url: jud });
-  const h3xa = process.env.DATA_CATALOG_H3XA_DATABASE_URL || (harvestUrl ? rewriteDbUrl(harvestUrl, 'h3xa_user', 'h3xa') : '');
-  if (h3xa && h3xa !== jud) configs.push({ id: 'h3xa', label: 'H3XA', owner: 'h3xa', url: h3xa });
+  if (harvestUrl) configs.push({ id: 'harvest', label: 'Harvest', owner: 'harvest', url: hostify(harvestUrl) });
+  // Use explicit URLs when set (different passwords), otherwise derive from harvestUrl
+  const judExplicit = process.env.DATA_CATALOG_JUDICIUM_DATABASE_URL;
+  const h3xaExplicit = process.env.DATA_CATALOG_H3XA_DATABASE_URL || process.env.H3XA_DATABASE_URL;
+  const jud = judExplicit || (harvestUrl ? rewriteDbUrl(harvestUrl, 'judicium_user', 'judicium') : '');
+  if (jud) configs.push({ id: 'judicium', label: 'Judicium PG', owner: 'judicium', url: judExplicit ? jud : hostify(jud) });
+  const h3xa = h3xaExplicit || (harvestUrl ? rewriteDbUrl(harvestUrl, 'h3xa_user', 'h3xa') : '');
+  if (h3xa && h3xa !== jud) configs.push({ id: 'h3xa', label: 'H3XA', owner: 'h3xa', url: h3xaExplicit ? h3xa : hostify(h3xa) });
   return configs;
 }
 

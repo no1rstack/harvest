@@ -64,6 +64,9 @@ services:
       - WEB_FOUNDATION_REQUEST_LOGGING
       - HEX_ARCH_EVENTS_URL
       - HEX_ARCH_EVENTS_TOKEN
+      - DATA_CATALOG_JUDICIUM_DATABASE_URL
+      - DATA_CATALOG_H3XA_DATABASE_URL
+      - H3XA_DATABASE_URL
     networks:
       - traefik
     volumes:
