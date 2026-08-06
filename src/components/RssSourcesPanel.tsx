@@ -68,6 +68,13 @@ export function RssSourcesPanel() {
   const [packBusy, setPackBusy] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+
+  const [addName, setAddName] = useState('');
+  const [addUrl, setAddUrl] = useState('');
+  const [addCategory, setAddCategory] = useState('osint');
+  const [addBusy, setAddBusy] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,6 +94,18 @@ export function RssSourcesPanel() {
     const t = setInterval(() => load(), 60_000);
     return () => clearInterval(t);
   }, [load]);
+
+  const stats = useMemo(() => {
+    if (!data) return null;
+    const s = data.sources;
+    return {
+      total: s.length,
+      producing: s.filter(x => x.lastOkAt && !x.lastError).length,
+      errored: s.filter(x => x.lastError && x.enabled !== false).length,
+      unknown: s.filter(x => !x.lastOkAt && !x.lastError).length,
+      avgCadence: Math.round(s.reduce((sum, x) => sum + (x.adaptiveIntervalMinutes || 15), 0) / s.length),
+    };
+  }, [data]);
 
   const autoRetired = useRef(false);
   useEffect(() => {
@@ -232,6 +251,43 @@ export function RssSourcesPanel() {
     load();
   }, [importText, load]);
 
+  const doAddFeed = useCallback(async () => {
+    if (!addUrl.trim().startsWith('http')) {
+      setAddError('Please enter a valid URL starting with http:// or https://');
+      return;
+    }
+    setAddBusy(true);
+    setAddError(null);
+    try {
+      const res = await fetch('/api/feeds/community/sources', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: addName.trim() || new URL(addUrl).hostname,
+          feed_url: addUrl.trim(),
+          category: addCategory || 'osint',
+          auto_pull: true,
+          enabled: true,
+          adaptive_interval_minutes: 15,
+        }),
+      });
+      const body = await res.json().catch(() => null);
+      if (res.ok && body?.id) {
+        setAddName('');
+        setAddUrl('');
+        setAddCategory('osint');
+        setShowAdd(false);
+        setImportResult(`Added: ${addName || addUrl}`);
+        load();
+      } else {
+        setAddError(body?.error || `HTTP ${res.status}`);
+      }
+    } catch (e) {
+      setAddError((e as Error).message);
+    } finally {
+      setAddBusy(false);
+    }
+  }, [addName, addUrl, addCategory, load]);
+
   const importPack = useCallback(async (pack: string) => {
     setPackBusy(pack);
     setImportResult(null);
@@ -254,18 +310,6 @@ export function RssSourcesPanel() {
     setBusy(null);
     load();
   }, [load]);
-
-  const stats = useMemo(() => {
-    if (!data) return null;
-    const s = data.sources;
-    return {
-      total: s.length,
-      producing: s.filter(x => x.lastOkAt && !x.lastError).length,
-      errored: s.filter(x => x.lastError && x.enabled !== false).length,
-      unknown: s.filter(x => !x.lastOkAt && !x.lastError).length,
-      avgCadence: Math.round(s.reduce((sum, x) => sum + (x.adaptiveIntervalMinutes || 15), 0) / s.length),
-    };
-  }, [data]);
 
   if (loading && !data) return <div className="p-8 text-center text-[12px] text-ink/40">Loading RSS sources...</div>;
   if (error) return (
@@ -290,6 +334,10 @@ export function RssSourcesPanel() {
           </div>
         </div>
         <div className="flex items-center gap-1.5">
+          <button onClick={() => { setShowAdd(true); setAddName(''); setAddUrl(''); setAddCategory('osint'); setAddError(null); }}
+            className="flex items-center gap-1 px-2.5 py-1.5 border border-ink/[0.10] text-[10px] text-ink/55 hover:text-ink/75">
+            <Plus size={10} /> Add Feed
+          </button>
           <button onClick={() => { setShowImport(true); setImportText(''); }}
             className="flex items-center gap-1 px-2.5 py-1.5 border border-ink/[0.10] text-[10px] text-ink/55 hover:text-ink/75">
             <Upload size={10} /> Import
@@ -396,6 +444,45 @@ export function RssSourcesPanel() {
           {importResult && (
             <div className="text-[11px] text-ink/50 bg-ink/[0.04] px-3 py-1.5">{importResult}</div>
           )}
+        </div>
+      )}
+
+      {/* Add Feed form */}
+      {showAdd && (
+        <div className="border border-emerald-400/[0.12] bg-emerald-400/[0.02] p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-emerald-400/50">Add RSS Feed</span>
+            <button onClick={() => setShowAdd(false)} className="text-ink/25 hover:text-ink/50"><X size={12} /></button>
+          </div>
+          <div className="flex flex-col gap-2">
+            <input
+              value={addUrl}
+              onChange={e => setAddUrl(e.target.value)}
+              placeholder="https://example.com/rss-feed.xml"
+              className="bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[11px] text-ink/70 font-mono w-full"
+              onKeyDown={e => e.key === 'Enter' && doAddFeed()}
+            />
+            <div className="flex gap-2">
+              <input
+                value={addName}
+                onChange={e => setAddName(e.target.value)}
+                placeholder="Feed name (auto from URL if blank)"
+                className="flex-1 bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[11px] text-ink/70"
+              />
+              <input
+                value={addCategory}
+                onChange={e => setAddCategory(e.target.value)}
+                placeholder="Category (default: osint)"
+                className="w-32 bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[11px] text-ink/70"
+              />
+              <button onClick={doAddFeed} disabled={addBusy || !addUrl.trim()}
+                className="px-4 py-1.5 bg-emerald-400/[0.10] border border-emerald-400/[0.20] text-[10px] text-emerald-400/75 hover:bg-emerald-400/[0.15] disabled:opacity-30 whitespace-nowrap">
+                {addBusy ? 'Saving...' : 'Add Feed'}
+              </button>
+            </div>
+          </div>
+          {addError && <div className="text-[10px] text-rose-400/60">{addError}</div>}
+          {importResult && <div className="text-[10px] text-emerald-400/50">{importResult}</div>}
         </div>
       )}
 
