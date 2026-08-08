@@ -203,18 +203,19 @@ export function registerRetiredRoutes(app: Express): void {
   });
 
   // Retire all broken feed sources (dead domains ≥4 failures, transient ≥12 failures)
-  app.post('/api/retired/retire-broken-feeds', async (_req, res) => {
+  app.post('/api/retired/retire-broken-feeds', async (req, res) => {
     try {
       const pool = getHarvestPool();
       if (!pool) return res.status(503).json({ error: 'no database pool' });
 
-      // Dead-domain errors — low tolerance
+      const aggressive = req.body?.aggressive === true;
+
+      // ── Dead-domain errors: retire at 2+ failures (was 4) ──
       const deadResult = await pool.query(`
         UPDATE community_feed_sources
         SET enabled = false, auto_pull = false, updated_at = NOW()
         WHERE enabled = true
-          AND auto_pull = true
-          AND consecutive_failures >= 4
+          AND consecutive_failures >= ${aggressive ? 2 : 4}
           AND last_error IS NOT NULL
           AND last_ok_at IS NOT NULL
           AND (
@@ -228,16 +229,16 @@ export function registerRetiredRoutes(app: Express): void {
             OR LOWER(last_error) LIKE '%unable to resolve%'
             OR LOWER(last_error) LIKE '%no address associated%'
           )
+        RETURNING id, name, feed_url, last_error
       `);
 
-      // Transient errors — higher tolerance
+      // ── Transient / generic "pull failed" errors: retire at 3+ failures ──
       const transientResult = await pool.query(`
         UPDATE community_feed_sources
         SET enabled = false, auto_pull = false, updated_at = NOW()
         WHERE enabled = true
-          AND auto_pull = true
+          AND consecutive_failures >= ${aggressive ? 3 : 12}
           AND last_error IS NOT NULL
-          AND consecutive_failures >= 12
           AND last_ok_at IS NOT NULL
           AND NOT (
             LOWER(last_error) LIKE '%enotfound%'
@@ -250,10 +251,64 @@ export function registerRetiredRoutes(app: Express): void {
             OR LOWER(last_error) LIKE '%unable to resolve%'
             OR LOWER(last_error) LIKE '%no address associated%'
           )
+        RETURNING id, name, feed_url, last_error
       `);
 
-      const totalRetired = (deadResult.rowCount ?? 0) + (transientResult.rowCount ?? 0);
-      res.json({ retired: totalRetired, deadDomains: deadResult.rowCount ?? 0, transient: transientResult.rowCount ?? 0 });
+      // ── HTTP 4xx/5xx errors: retire at 1+ failure ──
+      const httpResult = await pool.query(`
+        UPDATE community_feed_sources
+        SET enabled = false, auto_pull = false, updated_at = NOW()
+        WHERE enabled = true
+          AND last_error IS NOT NULL
+          AND (
+            LOWER(last_error) LIKE '%http 404%'
+            OR LOWER(last_error) LIKE '%http 401%'
+            OR LOWER(last_error) LIKE '%http 403%'
+            OR LOWER(last_error) LIKE '%http 410%'
+            OR LOWER(last_error) LIKE '%http 500%'
+            OR LOWER(last_error) LIKE '%http 502%'
+            OR LOWER(last_error) LIKE '%http 503%'
+          )
+        RETURNING id, name, feed_url, last_error
+      `);
+
+      // ── Also catch feeds with never-had-success but 3+ failures ──
+      const neverOkResult = await pool.query(`
+        UPDATE community_feed_sources
+        SET enabled = false, auto_pull = false, updated_at = NOW()
+        WHERE enabled = true
+          AND consecutive_failures >= 3
+          AND last_error IS NOT NULL
+          AND last_ok_at IS NULL
+        RETURNING id, name, feed_url, last_error
+      `);
+
+      const totalRetired =
+        (deadResult.rowCount ?? 0) +
+        (transientResult.rowCount ?? 0) +
+        (httpResult.rowCount ?? 0) +
+        (neverOkResult.rowCount ?? 0);
+
+      const retired = [
+        ...(deadResult.rows || []),
+        ...(transientResult.rows || []),
+        ...(httpResult.rows || []),
+        ...(neverOkResult.rows || []),
+      ];
+
+      res.json({
+        retired: totalRetired,
+        deadDomains: deadResult.rowCount ?? 0,
+        transient: transientResult.rowCount ?? 0,
+        httpErrors: httpResult.rowCount ?? 0,
+        neverOk: neverOkResult.rowCount ?? 0,
+        retired_feeds: retired.slice(0, 50).map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          url: r.feed_url,
+          error: String(r.last_error || '').slice(0, 100),
+        })),
+      });
     } catch (err) {
       res.status(500).json({ error: (err as Error).message });
     }
