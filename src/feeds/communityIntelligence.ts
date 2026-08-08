@@ -8,6 +8,7 @@ import { submitTargetIdToCascades } from '../collection/submitDue.js';
 import type { CollectionTarget } from '../collection/types.js';
 import { buildFeedEnrichment, enrichCommunityPayload, enrichCommunityPayloadAsync } from './feedEnrichment.js';
 import { expandKeywordsForCollection, goalFromCategory } from './keywordExpansion.js';
+import { scoreEvidenceSync, type ObservationEvidence, type SourceDescriptor, type ExtractionDescriptor } from '../intelligence/confidence/index.js';
 import {
   getCommunityItemById,
   listCommunityItems,
@@ -29,6 +30,10 @@ export interface ExpandFromFeedsOptions {
   dryRun?: boolean;
   maxTargets?: number;
   product?: string;
+  /** Minimum evidence confidence threshold for seeding targets (0-1, default 0.40) */
+  minConfidence?: number;
+  /** Whether to use LLM scoring review for borderline items */
+  llmScore?: boolean;
 }
 
 export interface ExpandFromFeedsResult {
@@ -37,6 +42,7 @@ export interface ExpandFromFeedsResult {
   targets: Array<{ id: string; value: string; created: boolean; cascades?: unknown }>;
   enqueued: number;
   failed: number;
+  message?: string;
 }
 
 function keywordsFromItem(item: CommunityItem): string[] {
@@ -44,6 +50,18 @@ function keywordsFromItem(item: CommunityItem): string[] {
   const kw = enrichment?.keywords || [];
   const ent = enrichment?.entities || [];
   return [...new Set([...kw, ...ent])].filter(Boolean);
+}
+
+function inferSourceClassFromCategory(category: string): import('../intelligence/confidence/types.js').SourceClass {
+  const cat = category.toLowerCase();
+  if (['government', 'congress', 'legislation', 'regulation', 'legal', 'executive', 'fiscal'].some((c) => cat.includes(c))) return 'government';
+  if (['finance', 'markets', 'stocks', 'crypto', 'commodities', 'financial', 'business', 'economics'].some((c) => cat.includes(c))) return 'financial';
+  if (['science', 'research', 'academia', 'physics', 'analyst-report'].some((c) => cat.includes(c))) return 'research';
+  if (['news', 'news-media', 'media', 'opinion', 'politics'].some((c) => cat.includes(c))) return 'news';
+  if (['social', 'community'].some((c) => cat.includes(c))) return 'social';
+  if (['sensor', 'disaster', 'natural-disasters', 'climate', 'environment'].some((c) => cat.includes(c))) return 'sensor';
+  if (['domain', 'dns', 'directory'].some((c) => cat.includes(c))) return 'domain';
+  return 'unknown';
 }
 
 export async function collectSeedsFromCommunity(
@@ -98,9 +116,68 @@ export async function expandCommunityKeywordsToTargets(
     return { seeds: [], expanded: [], targets: [], enqueued: 0, failed: 0 };
   }
 
+  // Apply evidence confidence scoring gate
+  const minConf = opts.minConfidence ?? 0.40;
+  const scoredSeeds: Array<{ term: string; confidence: number }> = [];
+
+  for (const seed of seeds) {
+    const sourceItems = items.filter((i) => {
+      const kw = (i.payload?.enrichment as { keywords?: string[] } | undefined)?.keywords;
+      return kw?.some((k) => k.toLowerCase().includes(seed.toLowerCase()));
+    });
+
+    const sourceEv: ObservationEvidence = {
+      observationId: `seed:${seed}`,
+      value: seed,
+      entityType: 'keyword',
+      source: {
+        id: 'community-feed',
+        name: sourceItems[0]?.sourceName || 'RSS Feed',
+        class: inferSourceClassFromCategory(sourceItems[0]?.category || 'news'),
+        baseline: 0.60,
+        evidenceFamily: 'community-feed',
+      },
+      extraction: {
+        method: sourceItems[0]?.payload?.enrichment && (sourceItems[0].payload.enrichment as any).llm ? 'llm-structured' : 'rule-based',
+        baseline: 0.70,
+        canHallucinate: !!(sourceItems[0]?.payload?.enrichment && (sourceItems[0].payload.enrichment as any).llm),
+      },
+      observedAt: sourceItems[0]?.publishedAt || new Date().toISOString(),
+      observationCount: sourceItems.length,
+    };
+
+    const { scored, seedsTarget } = scoreEvidenceSync(sourceEv, sourceItems.length > 1
+      ? sourceItems.map((si) => ({
+          observationId: si.id,
+          value: seed,
+          entityType: 'keyword',
+          source: { id: 'community-feed', name: si.sourceName, class: inferSourceClassFromCategory(si.category || 'news'), baseline: 0.60, evidenceFamily: 'community-feed' },
+          extraction: { method: 'rule-based' as const, baseline: 0.70, canHallucinate: false },
+          observedAt: si.publishedAt,
+          observationCount: 1,
+        }))
+      : []);
+
+    if (seedsTarget && scored.compositeConfidence >= minConf) {
+      scoredSeeds.push({ term: seed, confidence: scored.compositeConfidence });
+    }
+  }
+
+  if (!scoredSeeds.length) {
+    return {
+      seeds,
+      expanded: [],
+      targets: [],
+      enqueued: 0,
+      failed: 0,
+      message: `All ${seeds.length} seeds filtered below confidence threshold ${minConf}`,
+    };
+  }
+
+  const expansionSeeds = scoredSeeds.map((s) => s.term);
   const expanded = opts.expand !== false
-    ? expandKeywordsForCollection(seeds, { goal, maxPerSeed: 6 })
-    : seeds.map((term) => ({ term, source: 'seed', confidence: 1 }));
+    ? expandKeywordsForCollection(expansionSeeds, { goal, maxPerSeed: 6 })
+    : scoredSeeds.map((s) => ({ term: s.term, source: 'seed', confidence: s.confidence }));
 
   const maxTargets = opts.maxTargets ?? 25;
   const targets: ExpandFromFeedsResult['targets'] = [];

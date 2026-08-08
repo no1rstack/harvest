@@ -110,7 +110,7 @@ HARVEST_COOKIE_SECURE=1
 
 HARVEST_PUBLIC_URL=https://harvest.noirstack.com
 JUDICIUM_PUBLIC_URL=https://judicium.app
-CASCADES_API_URL=http://cascades:3000
+# CASCADES_API_URL must be set in Infisical — no hardcoded fallback
 CASCADES_PUBLIC_URL=${CASCADES_PUBLIC:-https://cascades.work}
 COLLECTION_API_URL=http://harvest:3000
 COLLECTION_INTERNAL_TOKEN=$COL_TOKEN

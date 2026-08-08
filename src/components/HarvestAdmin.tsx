@@ -7,11 +7,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Radar, RefreshCw, Play, FileText, AlertTriangle, Check, Clock,
   Database, Crosshair, ListTree, Terminal, LogIn, LogOut, Brain, Settings, Layers, Rss,
-  Sun, Moon, Globe, BookOpen, Archive,
+  Sun, Moon, Globe, BookOpen, Archive, Bot,
 } from 'lucide-react';
 import { HarvestDockview, useDockviewPanels, type DockPanel } from './HarvestDockview';
 import type { DockviewApi } from 'dockview-react';
 import { cn } from '../types';
+import { AiFlowStudio } from './AiFlowStudio';
 
 interface HarvestAuthState {
   required: boolean;
@@ -118,7 +119,7 @@ function statusTone(status: string) {
 
 export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) => {
   const [auth, setAuth] = useState<HarvestAuthState | null>(null);
-  const [tab, setTab] = useState<'ops' | 'findings' | 'registry' | 'graph' | 'intelligence' | 'feeds' | 'platform' | 'architecture' | 'sources' | 'enrichment' | 'rss-sources' | 'retired'>('findings');
+  const [tab, setTab] = useState<'ops' | 'findings' | 'registry' | 'graph' | 'intelligence' | 'feeds' | 'platform' | 'architecture' | 'sources' | 'enrichment' | 'rss-sources' | 'retired' | 'ai-flow'>('findings');
   const [dockviewApi, setDockviewApi] = useState<DockviewApi | null>(null);
   const [data, setData] = useState<HarvestStatus | null>(null);
   const [targetsText, setTargetsText] = useState('');
@@ -708,6 +709,7 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
     { id: 'enrichment', name: 'Enrichment', component: 'enrichment' },
     { id: 'rss-sources', name: 'RSS Sources', component: 'rss-sources' },
     { id: 'retired', name: 'Retired', component: 'retired' },
+    { id: 'ai-flow', name: 'AI Flow Studio', component: 'ai-flow' },
   ];
 
   const { openPanel } = useDockviewPanels(dockviewApi, PANELS);
@@ -847,6 +849,17 @@ export const HarvestAdmin: React.FC<{ className?: string }> = ({ className }) =>
               >
                 <Rss size={12} className="inline mr-1" />
                 RSS Sources
+              </button>
+              <button
+                type="button"
+                onClick={() => { setTab('ai-flow'); openPanel('ai-flow'); }}
+                className={cn(
+                  'px-3 py-1 text-[11px]',
+                  tab === 'ai-flow' ? 'bg-ink/[0.08] text-ink/80' : 'text-ink/40 hover:text-ink/65',
+                )}
+              >
+                <Bot size={12} className="inline mr-1" />
+                AI Flow
               </button>
               <button
                 type="button"

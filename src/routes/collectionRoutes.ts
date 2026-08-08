@@ -634,4 +634,157 @@ export function registerCollectionRoutes(app: Express): void {
       res.status(500).json({ error: err.message });
     }
   });
+
+  // ── Cascades Completion Hook ──
+  // Cascades calls this on workflow completion (success, failure, cancelled).
+  // Harvest receives the run results and updates its books.
+
+  app.post('/api/collection/hooks/cascades-completion', async (req, res) => {
+    if (!requireInternal(req, res)) return;
+    try {
+      const pool = poolOr503(res);
+      if (!pool) return;
+
+      const body = req.body as Record<string, unknown>;
+      const runId = String(body.runId || body.run_id || '');
+      const workflowId = String(body.workflowId || body.workflow_id || '');
+      const status = String(body.status || 'unknown');
+      const error = body.error ? String(body.error) : undefined;
+      const nodeResults = body.nodeResults || body.node_results || {};
+      const startedAt = body.startedAt || body.started_at;
+      const completedAt = body.completedAt || body.completed_at;
+
+      // Update osint_harvest_runs — match actual schema (started_at, finished_at, status, metadata)
+      if (runId) {
+        const runRow = await pool.query(
+          `SELECT id, status FROM osint_harvest_runs WHERE id = $1`,
+          [runId],
+        );
+
+        const safeMeta = JSON.stringify({ cascades_completion: body });
+        if (runRow.rows.length > 0) {
+          const run = runRow.rows[0];
+          await pool.query(
+            `UPDATE osint_harvest_runs
+             SET status = $2, finished_at = $3, metadata = COALESCE(metadata, '{}'::jsonb) || $4::jsonb
+             WHERE id = $1`,
+            [run.id, status, completedAt ?? new Date().toISOString(), safeMeta],
+          );
+        } else {
+          // Insert a new run record for cascades-originated runs
+          await pool.query(
+            `INSERT INTO osint_harvest_runs (id, target, status, started_at, finished_at, metadata)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [runId, body.target || body.domain || 'unknown', status, startedAt ?? new Date().toISOString(), completedAt ?? new Date().toISOString(), safeMeta],
+          );
+        }
+      }
+
+      // Update collection_targets — use only guaranteed-safe columns
+      const targetId = typeof body.target_id === 'string' ? body.target_id : String(nodeResults?.['harvest-start-run']?.targetId || body.targetId || '');
+      if (targetId) {
+        try {
+          await pool.query(
+            `UPDATE collection_targets SET last_cascades_run_id = $2, updated_at = NOW() WHERE id = $1`,
+            [targetId, runId],
+          );
+        } catch {
+          // target may not exist or column may be different — non-critical
+        }
+      }
+
+      // Publish completion event
+      await publishCollectionEvent(pool, {
+        event_type: `collection.cascades.${status}`,
+        target_id: targetId || undefined,
+        run_id: runId,
+        cascades_run_id: runId,
+        payload: { workflow_id: workflowId, status, error, node_results: nodeResults, started_at: startedAt, completed_at: completedAt },
+      });
+
+      // If completed successfully, run post-collection capabilities
+      if (status === 'completed' && targetId) {
+        try {
+          const { runPostCollectionCapabilities } = await import('../intelligence/core/post-collection.js');
+          await runPostCollectionCapabilities(pool, targetId);
+        } catch (pcErr: unknown) {
+          console.warn('[cascades-hook] post-collection capabilities failed:', (pcErr as Error).message);
+        }
+      }
+
+      // Bridge to Judicium on completion
+      if (status === 'completed' && targetId) {
+        try {
+          const { bridgeWorkflowRunToJudicium } = await import('../collection/judicium-bridge.js');
+          await bridgeWorkflowRunToJudicium(pool, runId, { targetId });
+        } catch (jErr: unknown) {
+          console.warn('[cascades-hook] judicium bridge failed:', (jErr as Error).message);
+        }
+      }
+
+      res.json({ ok: true, hook: 'cascades-completion', run_id: runId, status });
+    } catch (err: any) {
+      console.error('[cascades-hook] error:', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── AI Flow Studio ──
+  // Accept natural-language collection descriptions and turn them into
+  // a fully-formed Collection Target, then enqueue to Cascades.
+
+  app.post('/api/collection/ai-flow', async (req, res) => {
+    try {
+      const pool = poolOr503(res);
+      if (!pool) return;
+
+      const prompt = String(req.body?.prompt || '').trim();
+      if (!prompt) return res.status(400).json({ error: 'prompt required — describe what to collect in natural language' });
+
+      const { parseFlowStudioPrompt } = await import('../collection/aiFlowStudio.js');
+      const parsed = parseFlowStudioPrompt(prompt);
+
+      if (!parsed.target) {
+        return res.status(400).json({ error: 'Could not determine a collection target from prompt', parsed });
+      }
+
+      // Create the collection target
+      const targetInput: CollectionTargetInput = {
+        value: parsed.target,
+        target_type: parsed.targetType,
+        product: parsed.product || 'harvest',
+        workflow_template: parsed.workflowTemplate,
+        collection_profile: parsed.profile,
+        collection_policy: parsed.policy,
+        collection_strategy: parsed.strategy,
+        enabled: true,
+        metadata: {
+          origin: 'ai-flow-studio',
+          prompt,
+          parsed_intent: parsed.intent,
+          reasoning: parsed.reasoning,
+          collectors: parsed.collectors,
+        },
+      };
+
+      const target = await upsertTarget(pool, targetInput);
+
+      // Optionally enqueue directly
+      let submission: Awaited<ReturnType<typeof submitTargetIdToCascades>> = null;
+      if (req.body?.enqueue !== false) {
+        submission = await submitTargetIdToCascades(pool, target.id, {
+          wait: Boolean(req.body?.wait),
+        });
+      }
+
+      res.status(201).json({
+        ok: true,
+        target,
+        parsed,
+        cascades: submission ? { run_id: submission.cascades_run_id, status: submission.cascades_status } : null,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
 }

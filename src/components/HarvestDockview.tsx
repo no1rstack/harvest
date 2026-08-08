@@ -13,6 +13,7 @@ import { FeedsPanel } from './panels/FeedsPanel';
 import { OpsPanel } from './panels/OpsPanel';
 import { PlatformPanel } from './panels/PlatformPanel';
 import { RetiredPanel } from './panels/RetiredPanel';
+import { AiFlowStudio } from './AiFlowStudio';
 
 export interface DockPanel {
   id: string;
@@ -46,6 +47,7 @@ export const HarvestDockview: React.FC<HarvestDockviewProps> = ({
       enrichment: EnrichmentPanel as unknown as React.FC<IDockviewPanelProps>,
       'rss-sources': RssSourcesPanel as unknown as React.FC<IDockviewPanelProps>,
       retired: RetiredPanel as unknown as React.FC<IDockviewPanelProps>,
+      'ai-flow': AiFlowStudio as unknown as React.FC<IDockviewPanelProps>,
     };
     return map;
   }, []);

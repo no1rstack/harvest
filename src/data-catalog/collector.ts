@@ -133,17 +133,6 @@ export async function fetchDomainEvents(harvestUrl: string, limit = 40) {
   }
 }
 
-export async function fetchCascadesHealth() {
-  const base = (process.env.CASCADES_API_URL || 'http://cascades:3000').replace(/\/$/, '');
-  try {
-    const res = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(4000) });
-    if (!res.ok) return { connected: false, url: base, error: `HTTP ${res.status}` };
-    return { connected: true, url: base, health: await res.json() };
-  } catch (err: unknown) {
-    return { connected: false, url: base, error: (err as Error).message };
-  }
-}
-
 export function snapshotPath(): string {
   return path.join(process.env.HARVEST_PLATFORM_CONFIG_DIR || path.join(process.cwd(), 'data'), 'catalog-snapshots.json');
 }

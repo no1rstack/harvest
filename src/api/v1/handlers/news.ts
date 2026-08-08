@@ -56,7 +56,7 @@ export async function listFeedDigest(
       url: s.feedUrl,
       category: s.category,
     }));
-    const liveItems = await aggregateRssDigest(categories, limit, extraFeeds);
+    const { items: liveItems } = await aggregateRssDigest(categories, limit, extraFeeds);
     const newsItems = liveItems.map(digestItemToNewsItem);
     const digest = buildFeedDigestFromItems(newsItems, {
       variant,

@@ -311,7 +311,7 @@ export function registerHarvestRoutes(app: Express, deps: HarvestRouteDeps = {})
 
   app.get('/api/harvest/config/public', (_req, res) => {
     res.json({
-      cascadesUrl: (process.env.CASCADES_PUBLIC_URL || 'http://127.0.0.1:3102').replace(/\/$/, ''),
+      cascadesUrl: process.env.CASCADES_PUBLIC_URL?.replace(/\/$/, '') ?? null,
     });
   });
 

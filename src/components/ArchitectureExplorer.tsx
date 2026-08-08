@@ -310,11 +310,17 @@ export const ArchitectureExplorer: React.FC = () => {
               <div className="text-[10px] uppercase text-ink/40">Cascades</div>
               <div className="text-lg font-mono text-ink/75">{data.cascades?.connected ? 'OK' : '—'}</div>
               <div className="text-[10px] text-ink/35 truncate">{data.cascades?.url || 'not connected'}</div>
+              {data.cascades?.connected && (
+                <div className="text-[10px] text-ink/35">{data.cascades.workflowCount ?? 0} workflows</div>
+              )}
+              {!data.cascades?.connected && data.cascades?.error && (
+                <div className="text-[9px] text-amber-400/70 mt-1">{data.cascades.error}</div>
+              )}
             </div>
           </div>
 
           <div className="flex gap-1 flex-wrap border-b border-ink/[0.06] pb-2">
-            {(['living', 'tables', 'pipeline', 'events'] as const).map((v) => (
+            {(['living', 'tables', 'pipeline', 'events', 'workflows'] as const).map((v) => (
               <button key={v} type="button" onClick={() => setView(v)}
                 className={cn('px-3 py-1 text-[10px] uppercase tracking-wider', view === v ? 'bg-ink/[0.08] text-ink/75' : 'text-ink/40')}>
                 {v}
@@ -404,6 +410,35 @@ export const ArchitectureExplorer: React.FC = () => {
                 </div>
               ))}
               {!data.events?.length && <div className="text-[11px] text-ink/35">No domain_events yet</div>}
+            </div>
+          )}
+
+          {view === 'workflows' && (
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+              {data.cascades?.connected ? (
+                data.cascades.workflows?.length ? (
+                  <div className="space-y-1">
+                    {data.cascades.workflows.map((w) => (
+                      <div key={w.id} className="border border-ink/[0.06] px-3 py-2 text-[10px] flex items-center justify-between">
+                        <div>
+                          <span className="font-mono text-ink/65">{w.name}</span>
+                          {w.description && <span className="text-ink/35 ml-2">{w.description}</span>}
+                        </div>
+                        <span className={w.status === 'active' ? 'text-green-400/70' : 'text-ink/35'}>{w.status || 'unknown'}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-ink/35 p-4 border border-ink/[0.06]">
+                    <p>No workflows registered in Cascades yet.</p>
+                    <p className="mt-1 text-ink/25">Deploy workflows in Cascades to see them here. The run endpoint is ready at <code className="font-mono">POST /api/workflows/:id/run</code></p>
+                  </div>
+                )
+              ) : (
+                <div className="text-[11px] text-amber-400/70 border border-amber-500/20 p-3">
+                  Cascades is not reachable. Check CASCADES_API_URL in Infisical.
+                </div>
+              )}
             </div>
           )}
         </>

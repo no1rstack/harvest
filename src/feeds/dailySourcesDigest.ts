@@ -183,7 +183,7 @@ export async function buildDailySourcesDigest(
     const extraFeeds = registry
       .filter((s) => s.enabled)
       .map((s) => ({ name: s.name, url: s.feedUrl, category: s.category }));
-    const live = await aggregateRssDigest(categories, 200, extraFeeds);
+    const { items: live } = await aggregateRssDigest(categories, 200, extraFeeds);
     rows = live.map((item) => {
       const meta = sourceTierByName.get(item.source) || { tier: 'platform' as const };
       return {

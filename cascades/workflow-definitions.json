@@ -1,0 +1,383 @@
+{
+  "$schema": "https://cascades.work/schemas/workflow-registry.json",
+  "version": "1.0.0",
+  "generated_by": "harvest-collection-platform",
+  "generated_at": "2026-08-08T00:00:00Z",
+  "description": "Harvest Collection Platform — workflow definitions for Cascades orchestration engine. Deploy these in Cascades to enable Harvest-managed collection pipelines.",
+  "workflows": [
+    {
+      "id": "passive-domain-collection",
+      "name": "Passive Domain Collection",
+      "description": "Internet presence and passive infrastructure reconnaissance for domains, subdomains, hostnames, IPs, CIDRs, ASNs, organizations, certificates, cloud assets, and documents. Harvest orchestrates this via the Cascades submitDue scheduler.",
+      "category": "osint",
+      "version": 1,
+      "trigger": "manual-webhook",
+      "timeout_ms": 600000,
+      "retry_policy": {
+        "max_attempts": 3,
+        "backoff_ms": 30000,
+        "backoff_multiplier": 2
+      },
+      "nodes": [
+        {
+          "id": "harvest-validate-target",
+          "type": "http",
+          "label": "Validate Target",
+          "method": "POST",
+          "url": "${HARVEST_API_URL}/api/collection/steps/validate-target",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Collection-Token": "${COLLECTION_INTERNAL_TOKEN}"
+          },
+          "body": {
+            "targetId": "${ctx.targetId}",
+            "target_value": "${ctx.target}",
+            "product": "${ctx.product}",
+            "workflow_template": "${ctx.workflow_template}",
+            "collection_strategy": "${ctx.collection_strategy}",
+            "collection_profile": "${ctx.collection_profile}",
+            "collection_policy": "${ctx.collection_policy}",
+            "capabilities": "${ctx.capabilities}",
+            "collectors": "${ctx.collectors}"
+          }
+        },
+        {
+          "id": "harvest-start-run",
+          "type": "http",
+          "label": "Start Collection Run",
+          "method": "POST",
+          "url": "${HARVEST_API_URL}/api/collection/steps/start-run",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Collection-Token": "${COLLECTION_INTERNAL_TOKEN}"
+          },
+          "body": {
+            "targetId": "${ctx.targetId}",
+            "target_value": "${ctx.target}",
+            "product": "${ctx.product}",
+            "execution_mode": "${ctx.execution_mode || 'inline'}"
+          },
+          "output_key": "runId"
+        },
+        {
+          "id": "harvest-collect-connectors",
+          "type": "parallel",
+          "label": "Run Connectors",
+          "fan_out": "${ctx.collectors}",
+          "child_template": {
+            "id": "harvest-connector-${item}",
+            "type": "http",
+            "label": "Connector: ${item}",
+            "method": "POST",
+            "url": "${HARVEST_API_URL}/api/collection/steps/collect-connector",
+            "headers": {
+              "Content-Type": "application/json",
+              "X-Collection-Token": "${COLLECTION_INTERNAL_TOKEN}"
+            },
+            "body": {
+              "targetId": "${ctx.targetId}",
+              "connector": "${item}",
+              "workflow_run_id": "${node.harvest-start-run.runId}",
+              "maxResults": 100,
+              "timeoutMs": 20000
+            }
+          }
+        },
+        {
+          "id": "harvest-persist-observations",
+          "type": "http",
+          "label": "Persist Observations",
+          "method": "POST",
+          "url": "${HARVEST_API_URL}/api/collection/steps/persist-observations",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Collection-Token": "${COLLECTION_INTERNAL_TOKEN}"
+          },
+          "body": {
+            "runId": "${node.harvest-start-run.runId}",
+            "targetId": "${ctx.targetId}",
+            "target_value": "${ctx.target}",
+            "observations": "${node.harvest-collect-connectors.merged_observations}",
+            "execution": {
+              "workflow_run_id": "${ctx.workflow_run_id}",
+              "node_id": "harvest-persist-observations",
+              "request_id": "${ctx.request_id}"
+            }
+          }
+        },
+        {
+          "id": "harvest-finish-run",
+          "type": "http",
+          "label": "Finish Collection Run",
+          "method": "POST",
+          "url": "${HARVEST_API_URL}/api/collection/steps/finish-run",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Collection-Token": "${COLLECTION_INTERNAL_TOKEN}"
+          },
+          "body": {
+            "runId": "${node.harvest-start-run.runId}",
+            "targetId": "${ctx.targetId}",
+            "inserted": "${node.harvest-persist-observations.inserted}",
+            "skipped": "${node.harvest-persist-observations.skipped}"
+          }
+        }
+      ],
+      "completion_hook": {
+        "url": "${HARVEST_API_URL}/api/collection/hooks/cascades-completion",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Collection-Token": "${COLLECTION_INTERNAL_TOKEN}"
+        },
+        "include": ["status", "node_results", "error", "started_at", "completed_at"]
+      }
+    },
+    {
+      "id": "osint-investigation",
+      "name": "OSINT Investigation",
+      "description": "ENNA 7-step methodology: scope, identity (Holehe/Sherlock/Maigret), passive domain recon, correlate, report. Each finding can fan out as a child Collection target.",
+      "category": "osint",
+      "version": 1,
+      "trigger": "manual-webhook",
+      "timeout_ms": 900000,
+      "retry_policy": {
+        "max_attempts": 2,
+        "backoff_ms": 60000,
+        "backoff_multiplier": 2
+      },
+      "nodes": [
+        {
+          "id": "harvest-validate-target",
+          "type": "http",
+          "label": "Validate Target",
+          "method": "POST",
+          "url": "${HARVEST_API_URL}/api/collection/steps/validate-target",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Collection-Token": "${COLLECTION_INTERNAL_TOKEN}"
+          },
+          "body": {
+            "targetId": "${ctx.targetId}",
+            "target_value": "${ctx.target}",
+            "product": "${ctx.product}",
+            "workflow_template": "${ctx.workflow_template}",
+            "collection_strategy": "${ctx.collection_strategy}",
+            "collection_profile": "${ctx.collection_profile}",
+            "collection_policy": "${ctx.collection_policy}",
+            "capabilities": "${ctx.capabilities}",
+            "collectors": "${ctx.collectors}"
+          }
+        },
+        {
+          "id": "harvest-start-run",
+          "type": "http",
+          "label": "Start Investigation Run",
+          "method": "POST",
+          "url": "${HARVEST_API_URL}/api/collection/steps/start-run",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Collection-Token": "${COLLECTION_INTERNAL_TOKEN}"
+          },
+          "body": {
+            "targetId": "${ctx.targetId}",
+            "target_value": "${ctx.target}",
+            "product": "${ctx.product}",
+            "execution_mode": "investigation"
+          },
+          "output_key": "runId"
+        },
+        {
+          "id": "harvest-collect-identity",
+          "type": "parallel",
+          "label": "Identity Reconnaissance",
+          "fan_out": ["holehe", "sherlock", "maigret"],
+          "child_template": {
+            "id": "harvest-identity-${item}",
+            "type": "http",
+            "label": "Identity: ${item}",
+            "method": "POST",
+            "url": "${HARVEST_API_URL}/api/collection/steps/collect-connector",
+            "headers": {
+              "Content-Type": "application/json",
+              "X-Collection-Token": "${COLLECTION_INTERNAL_TOKEN}"
+            },
+            "body": {
+              "targetId": "${ctx.targetId}",
+              "connector": "${item}",
+              "workflow_run_id": "${node.harvest-start-run.runId}",
+              "maxResults": 50,
+              "timeoutMs": 30000
+            }
+          }
+        },
+        {
+          "id": "harvest-collect-infra",
+          "type": "parallel",
+          "label": "Infrastructure Reconnaissance",
+          "fan_out": "${ctx.collectors}",
+          "child_template": {
+            "id": "harvest-infra-${item}",
+            "type": "http",
+            "label": "Infra: ${item}",
+            "method": "POST",
+            "url": "${HARVEST_API_URL}/api/collection/steps/collect-connector",
+            "headers": {
+              "Content-Type": "application/json",
+              "X-Collection-Token": "${COLLECTION_INTERNAL_TOKEN}"
+            },
+            "body": {
+              "targetId": "${ctx.targetId}",
+              "connector": "${item}",
+              "workflow_run_id": "${node.harvest-start-run.runId}",
+              "maxResults": 100,
+              "timeoutMs": 20000
+            }
+          }
+        },
+        {
+          "id": "harvest-correlate",
+          "type": "http",
+          "label": "Correlate & Discover",
+          "method": "POST",
+          "url": "${HARVEST_API_URL}/api/collection/steps/correlate-discover",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Collection-Token": "${COLLECTION_INTERNAL_TOKEN}"
+          },
+          "body": {
+            "runId": "${node.harvest-start-run.runId}",
+            "targetId": "${ctx.targetId}",
+            "observations": "${merged_observations}",
+            "execution": {
+              "workflow_run_id": "${ctx.workflow_run_id}",
+              "node_id": "harvest-correlate",
+              "request_id": "${ctx.request_id}"
+            }
+          }
+        },
+        {
+          "id": "harvest-persist-observations",
+          "type": "http",
+          "label": "Persist & Report",
+          "method": "POST",
+          "url": "${HARVEST_API_URL}/api/collection/steps/persist-observations",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Collection-Token": "${COLLECTION_INTERNAL_TOKEN}"
+          },
+          "body": {
+            "runId": "${node.harvest-start-run.runId}",
+            "targetId": "${ctx.targetId}",
+            "target_value": "${ctx.target}",
+            "observations": "${all_observations}",
+            "execution": {
+              "workflow_run_id": "${ctx.workflow_run_id}",
+              "node_id": "harvest-persist-observations",
+              "request_id": "${ctx.request_id}"
+            }
+          }
+        },
+        {
+          "id": "harvest-finish-run",
+          "type": "http",
+          "label": "Finish Investigation",
+          "method": "POST",
+          "url": "${HARVEST_API_URL}/api/collection/steps/finish-run",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Collection-Token": "${COLLECTION_INTERNAL_TOKEN}"
+          },
+          "body": {
+            "runId": "${node.harvest-start-run.runId}",
+            "targetId": "${ctx.targetId}",
+            "inserted": "${node.harvest-persist-observations.inserted}",
+            "skipped": "${node.harvest-persist-observations.skipped}"
+          }
+        }
+      ],
+      "completion_hook": {
+        "url": "${HARVEST_API_URL}/api/collection/hooks/cascades-completion",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Collection-Token": "${COLLECTION_INTERNAL_TOKEN}"
+        },
+        "include": ["status", "node_results", "error", "started_at", "completed_at"]
+      }
+    },
+    {
+      "id": "rss-collector",
+      "name": "RSS Feed Collector",
+      "description": "Community RSS/Atom feed ingestion with enrichment and target seeding. Harvest orchestrates this via the communityPullWorker.",
+      "category": "osint",
+      "version": 1,
+      "trigger": "schedule",
+      "schedule": "*/15 * * * *",
+      "timeout_ms": 300000,
+      "retry_policy": {
+        "max_attempts": 2,
+        "backoff_ms": 15000,
+        "backoff_multiplier": 2
+      },
+      "nodes": [
+        {
+          "id": "harvest-pull-rss",
+          "type": "http",
+          "label": "Pull RSS Feeds",
+          "method": "POST",
+          "url": "${HARVEST_API_URL}/api/feeds/community/rss/pull",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Collection-Token": "${COLLECTION_INTERNAL_TOKEN}"
+          },
+          "body": {
+            "limit": "${ctx.limit || 50}",
+            "feed_id": "${ctx.feed_id || ''}"
+          }
+        },
+        {
+          "id": "harvest-enrich-feed-items",
+          "type": "http",
+          "label": "Enrich Feed Items",
+          "method": "POST",
+          "url": "${HARVEST_API_URL}/api/feeds/community/enrich",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Collection-Token": "${COLLECTION_INTERNAL_TOKEN}"
+          },
+          "body": {
+            "item_ids": "${node.harvest-pull-rss.item_ids}",
+            "workflow_run_id": "${ctx.workflow_run_id}"
+          }
+        },
+        {
+          "id": "harvest-seed-targets",
+          "type": "http",
+          "label": "Seed Collection Targets",
+          "method": "POST",
+          "url": "${HARVEST_API_URL}/api/feeds/community/seed-targets",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Collection-Token": "${COLLECTION_INTERNAL_TOKEN}"
+          },
+          "body": {
+            "keywords": "${node.harvest-enrich-feed-items.keywords}",
+            "min_confidence": 0.40,
+            "enqueue": true,
+            "workflow_run_id": "${ctx.workflow_run_id}"
+          }
+        }
+      ],
+      "completion_hook": {
+        "url": "${HARVEST_API_URL}/api/collection/hooks/cascades-completion",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Collection-Token": "${COLLECTION_INTERNAL_TOKEN}"
+        },
+        "include": ["status", "node_results", "error", "started_at", "completed_at"]
+      }
+    }
+  ]
+}

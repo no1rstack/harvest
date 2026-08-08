@@ -129,7 +129,22 @@ export interface DataCatalogResponse {
   tables: CatalogTableCard[];
   pipeline: { nodes: PipelineNode[]; edges: PipelineEdge[] };
   living: LivingArchitectureSummary;
-  cascades?: { connected: boolean; url?: string; health?: unknown; error?: string };
+  cascades?: {
+    connected: boolean;
+    url?: string;
+    health?: unknown;
+    error?: string;
+    workflowCount?: number;
+    workflows?: Array<{
+      id: string;
+      name: string;
+      description?: string;
+      status?: string;
+      version?: number;
+      createdAt?: string;
+      updatedAt?: string;
+    }>;
+  };
   events?: Array<{
     id: string;
     event_type: string;

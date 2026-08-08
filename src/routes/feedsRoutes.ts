@@ -33,7 +33,12 @@ import {
   upsertFeedSource,
   patchFeedSource,
   deleteFeedSource,
+  listRepairCandidates,
+  recordDiscovery,
+  recordUrlChange,
+  recordRepairAttempt,
 } from '../feeds/rssFeedRegistry.js';
+import { discoverFeeds, repairFeed } from '../feeds/feedResolver.js';
 import { buildDailySourcesDigest } from '../feeds/dailySourcesDigest.js';
 import { CRUCIX_FEED_SEEDS, CRUCIX_API_SEEDS } from '../feeds/crucixFeedSeeds.js';
 import {
@@ -326,10 +331,124 @@ export function registerFeedsRoutes(app: Express): void {
     try {
       const url = String(req.body?.url || req.body?.site_url || '').trim();
       if (!url) return res.status(400).json({ error: 'url is required' });
-      const discovery = await discoverFeedsFromUrl(url);
-      res.json(discovery);
+      const discovery = await discoverFeeds(url);
+      if (discovery.feeds.length > 0) {
+        return res.json(discovery);
+      }
+      const legacy = await discoverFeedsFromUrl(url);
+      res.json(legacy);
     } catch (err: unknown) {
       res.status(400).json({ error: (err as Error).message, feeds: [] });
+    }
+  });
+
+  app.get(`${base}/sources/repair-candidates`, async (_req, res) => {
+    try {
+      const pool = poolOr503(res);
+      if (!pool) return;
+      const candidates = await listRepairCandidates(pool);
+      res.json({ candidates, total: candidates.length });
+    } catch (err: unknown) {
+      res.status(500).json({ error: (err as Error).message, candidates: [] });
+    }
+  });
+
+  app.post(`${base}/sources/:id/repair`, async (req, res) => {
+    try {
+      const pool = poolOr503(res);
+      if (!pool) return;
+      const sourceId = String(req.params.id);
+      const sources = await listFeedSources(pool);
+      const source = sources.find((s) => s.id === sourceId);
+      if (!source) return res.status(404).json({ error: 'Source not found' });
+      await recordRepairAttempt(pool, sourceId);
+      const result = await repairFeed({ feedUrl: source.feedUrl, siteUrl: source.siteUrl });
+      if (result.best) {
+        await recordDiscovery(pool, sourceId, {
+          status: result.suggestion !== 'none' ? 'resolved' : 'failed',
+          discoveredUrl: result.best.feedUrl,
+          confidence: result.best.score,
+          method: result.best.discoveredVia,
+        });
+      } else {
+        await recordDiscovery(pool, sourceId, { status: 'failed' });
+      }
+      res.json({
+        sourceId, source: source.name, currentFeedUrl: source.feedUrl, ...result,
+      });
+    } catch (err: unknown) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  app.post(`${base}/sources/:id/accept-repair`, async (req, res) => {
+    try {
+      const pool = poolOr503(res);
+      if (!pool) return;
+      const sourceId = String(req.params.id);
+      const newUrl = String(req.body?.url || '').trim();
+      if (!newUrl) return res.status(400).json({ error: 'url is required' });
+      const reason = String(req.body?.reason || 'manual repair');
+      const sources = await listFeedSources(pool);
+      const source = sources.find((s) => s.id === sourceId);
+      if (!source) return res.status(404).json({ error: 'Source not found' });
+      await recordUrlChange(pool, sourceId, source.feedUrl, newUrl, reason);
+      res.json({
+        sourceId, name: source.name, previousUrl: source.feedUrl, newUrl, reason,
+        note: 'Feed URL updated. Previous URL preserved in history.',
+      });
+    } catch (err: unknown) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  app.post(`${base}/sources/auto-repair`, async (req, res) => {
+    try {
+      const pool = poolOr503(res);
+      if (!pool) return;
+      const autoRepair = req.body?.auto_repair !== false;
+      const candidates = await listRepairCandidates(pool);
+      const results: Array<{
+        sourceId: string; name: string; currentUrl: string; suggestion: string;
+        bestScore?: number; bestUrl?: string; autoRepaired: boolean; error?: string;
+      }> = [];
+      for (const source of candidates) {
+        try {
+          await recordRepairAttempt(pool, source.id);
+          const result = await repairFeed({ feedUrl: source.feedUrl, siteUrl: source.siteUrl });
+          const entry: typeof results[0] = {
+            sourceId: source.id, name: source.name, currentUrl: source.feedUrl,
+            suggestion: result.suggestion, bestScore: result.best?.score,
+            bestUrl: result.best?.feedUrl, autoRepaired: false,
+          };
+          if (result.best) {
+            await recordDiscovery(pool, source.id, {
+              status: result.suggestion !== 'none' ? 'resolved' : 'failed',
+              discoveredUrl: result.best.feedUrl, confidence: result.best.score,
+              method: result.best.discoveredVia,
+            });
+          } else {
+            await recordDiscovery(pool, source.id, { status: 'failed' });
+          }
+          if (autoRepair && result.autoRepairEligible && result.best) {
+            await recordUrlChange(pool, source.id, source.feedUrl, result.best.feedUrl,
+              'auto-repair: high-confidence discovery');
+            entry.autoRepaired = true;
+          }
+          results.push(entry);
+        } catch (err) {
+          results.push({
+            sourceId: source.id, name: source.name, currentUrl: source.feedUrl,
+            suggestion: 'none', autoRepaired: false, error: (err as Error).message,
+          });
+        }
+      }
+      res.json({
+        candidates: candidates.length, repaired: results.filter((r) => r.autoRepaired).length,
+        total: results.length, results,
+      });
+    } catch (err: unknown) {
+      res.status(500).json({ error: (err as Error).message });
     }
   });
 
@@ -606,6 +725,100 @@ export function registerFeedsRoutes(app: Express): void {
       if (!source) return res.status(404).json({ error: 'Source not found' });
       const result = await pullFeedSource(source);
       res.json({ source, result });
+    } catch (err: unknown) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // ── Evidence Confidence Scoring ──────────────────────────────────────
+
+  app.post(`${base}/score-confidence`, async (req, res) => {
+    try {
+      const pool = poolOr503(res);
+      if (!pool) return;
+      const hours = parseInt(String(req.query.hours || '48'), 10) || 48;
+      const limit = Math.min(parseInt(String(req.query.limit || '100'), 10) || 100, 500);
+      const category = typeof req.query.category === 'string' ? req.query.category : undefined;
+
+      const items = await listCommunityItems(pool, { hours, limit, category });
+      const keywordMap = new Map<string, { items: typeof items; sourceName: string }>();
+      for (const item of items) {
+        const enrichment = (item.payload?.enrichment as { keywords?: string[] }) || {};
+        for (const k of (enrichment.keywords || [])) {
+          const existing = keywordMap.get(k);
+          if (existing) existing.items.push(item);
+          else keywordMap.set(k, { items: [item], sourceName: item.sourceName });
+        }
+      }
+
+      const { scoreEvidenceBatch } = await import('../intelligence/confidence/composer.js');
+
+      const batch = Array.from(keywordMap.entries()).map(([keyword, ctx]) => ({
+        evidence: {
+          observationId: `sc:${keyword}`,
+          value: keyword,
+          entityType: 'keyword',
+          source: { id: 'community-feed', name: ctx.sourceName, class: 'news' as const, baseline: 0.60, evidenceFamily: 'community-feed' },
+          extraction: { method: 'rule-based' as const, baseline: 0.70, canHallucinate: false },
+          observedAt: ctx.items[0]?.publishedAt || new Date().toISOString(),
+          observationCount: ctx.items.length,
+        },
+        related: ctx.items.slice(1).map(i => ({
+          observationId: i.id, value: keyword, entityType: 'keyword',
+          source: { id: 'community-feed', name: i.sourceName, class: 'news' as const, baseline: 0.60, evidenceFamily: 'community-feed' },
+          extraction: { method: 'rule-based' as const, baseline: 0.70, canHallucinate: false },
+          observedAt: i.publishedAt, observationCount: 1,
+        })),
+      }));
+
+      const skipLlm = req.body?.skip_llm === true;
+      const results = await scoreEvidenceBatch(batch, { skipLlm, maxLlmReviews: 10 });
+
+      const summary = {
+        total: results.length,
+        byState: {} as Record<string, number>,
+        targetsRecommended: results.filter(r => r.seedsTarget).length,
+        averageConfidence: results.length > 0
+          ? Math.round(results.reduce((sum, r) => sum + r.scored.compositeConfidence, 0) / results.length * 100) / 100
+          : 0,
+      };
+      for (const r of results) summary.byState[r.state] = (summary.byState[r.state] || 0) + 1;
+
+      res.json({
+        items_scanned: items.length, unique_keywords: keywordMap.size,
+        results: results.slice(0, 50).map(r => ({
+          value: r.scored.evidence.value, confidence: Math.round(r.scored.compositeConfidence * 100) / 100,
+          state: r.state, seedsTarget: r.seedsTarget, frequency: r.recommendedFrequency,
+          breakdown: { src: r.scored.sourceReliability, ext: r.scored.extractionQuality, corr: r.scored.corroborationFactor, fresh: r.scored.freshnessFactor },
+          llmReviewed: r.scored.llmReviewed, llmConfidence: r.scored.llmConfidence,
+        })),
+        summary,
+      });
+    } catch (err: unknown) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  app.post(`${base}/score-confidence/check`, async (req, res) => {
+    try {
+      const value = String(req.body?.value || '').trim();
+      if (!value) return res.status(400).json({ error: 'value is required' });
+
+      const { scoreEvidence } = await import('../intelligence/confidence/composer.js');
+      const result = await scoreEvidence({
+        observationId: `check:${value}`, value,
+        entityType: req.body?.entity_type || 'keyword',
+        source: { id: 'manual', name: req.body?.source_name || 'Manual', class: (req.body?.source_class || 'news') as any, baseline: 0.60, evidenceFamily: 'manual' },
+        extraction: { method: (req.body?.extraction_method || 'manual') as any, baseline: 0.85, canHallucinate: false },
+        observedAt: new Date().toISOString(), observationCount: Number(req.body?.observation_count || 1),
+      }, [], { skipLlm: req.body?.skip_llm !== false });
+
+      res.json({
+        value, confidence: Math.round(result.scored.compositeConfidence * 100) / 100,
+        state: result.state, seedsTarget: result.seedsTarget, frequency: result.recommendedFrequency,
+        breakdown: { sourceReliability: result.scored.sourceReliability, extractionQuality: result.scored.extractionQuality, corroboration: result.scored.corroborationFactor, freshness: result.scored.freshnessFactor },
+        llm: result.scored.llmReviewed ? { confidence: result.scored.llmConfidence, rationale: result.scored.llmRationale } : null,
+      });
     } catch (err: unknown) {
       res.status(500).json({ error: (err as Error).message });
     }

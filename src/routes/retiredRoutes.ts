@@ -202,21 +202,58 @@ export function registerRetiredRoutes(app: Express): void {
     }
   });
 
-  // Retire all broken feed sources (never pulled successfully)
+  // Retire all broken feed sources (dead domains ≥4 failures, transient ≥12 failures)
   app.post('/api/retired/retire-broken-feeds', async (_req, res) => {
     try {
       const pool = getHarvestPool();
       if (!pool) return res.status(503).json({ error: 'no database pool' });
 
-      const { rowCount } = await pool.query(`
+      // Dead-domain errors — low tolerance
+      const deadResult = await pool.query(`
+        UPDATE community_feed_sources
+        SET enabled = false, auto_pull = false, updated_at = NOW()
+        WHERE enabled = true
+          AND auto_pull = true
+          AND consecutive_failures >= 4
+          AND last_error IS NOT NULL
+          AND last_ok_at IS NOT NULL
+          AND (
+            LOWER(last_error) LIKE '%enotfound%'
+            OR LOWER(last_error) LIKE '%getaddrinfo%'
+            OR LOWER(last_error) LIKE '%eai_again%'
+            OR LOWER(last_error) LIKE '%econnrefused%'
+            OR LOWER(last_error) LIKE '%econnreset%'
+            OR LOWER(last_error) LIKE '%epipe%'
+            OR LOWER(last_error) LIKE '%certificate%expired%'
+            OR LOWER(last_error) LIKE '%unable to resolve%'
+            OR LOWER(last_error) LIKE '%no address associated%'
+          )
+      `);
+
+      // Transient errors — higher tolerance
+      const transientResult = await pool.query(`
         UPDATE community_feed_sources
         SET enabled = false, auto_pull = false, updated_at = NOW()
         WHERE enabled = true
           AND auto_pull = true
           AND last_error IS NOT NULL
+          AND consecutive_failures >= 12
+          AND last_ok_at IS NOT NULL
+          AND NOT (
+            LOWER(last_error) LIKE '%enotfound%'
+            OR LOWER(last_error) LIKE '%getaddrinfo%'
+            OR LOWER(last_error) LIKE '%eai_again%'
+            OR LOWER(last_error) LIKE '%econnrefused%'
+            OR LOWER(last_error) LIKE '%econnreset%'
+            OR LOWER(last_error) LIKE '%epipe%'
+            OR LOWER(last_error) LIKE '%certificate%expired%'
+            OR LOWER(last_error) LIKE '%unable to resolve%'
+            OR LOWER(last_error) LIKE '%no address associated%'
+          )
       `);
 
-      res.json({ retired: rowCount ?? 0 });
+      const totalRetired = (deadResult.rowCount ?? 0) + (transientResult.rowCount ?? 0);
+      res.json({ retired: totalRetired, deadDomains: deadResult.rowCount ?? 0, transient: transientResult.rowCount ?? 0 });
     } catch (err) {
       res.status(500).json({ error: (err as Error).message });
     }

@@ -15,7 +15,8 @@ import { inferSourceClass } from './communityTypes.js';
 import { enrichCommunityPayload, enrichCommunityPayloadAsync } from './feedEnrichment.js';
 import { harvestLlmEnrichLimit, mapPool } from '../lib/llmClient.js';
 import { aggregateRssDigest, type DigestNewsItem, type FeedDef } from './rssDigest.js';
-import { listDueFeedSources, adjustFeedCadence, listFeedSources, touchFeedSourceHealth, type CommunityFeedSource } from './rssFeedRegistry.js';
+import { listDueFeedSources, adjustFeedCadence, listFeedSources, touchFeedSourceHealth, recycleDeadDomains, listRepairCandidates, recordRepairAttempt, recordDiscovery, recordUrlChange, type CommunityFeedSource } from './rssFeedRegistry.js';
+import { repairFeed } from './feedResolver.js';
 import { loadPlatformConfig } from '../platform/config.js';
 import { fetchAiidCorpus, fetchAptnotesCorpus } from './sharedCorpusPull.js';
 import { collectAllCrucixApis } from './crucixApiCollector.js';
@@ -167,7 +168,27 @@ export async function pullRssDigest(options?: {
       category: src.category,
     }));
 
-    const live = await aggregateRssDigest(categories, maxResults, extraFeeds);
+    const result = await aggregateRssDigest(categories, maxResults, extraFeeds);
+    const live = result.items;
+
+    // Record per-feed errors
+    for (const fe of result.feedErrors) {
+      for (const df of dueFeeds) {
+        if (df.name === fe.name) {
+          await touchFeedSourceHealth(pool, df.id, { ok: false, error: fe.error });
+          break;
+        }
+      }
+    }
+
+    // Mark successful registry feeds
+    for (const df of dueFeeds) {
+      const hasError = result.feedErrors.some((e) => e.name === df.name);
+      if (!hasError) {
+        await touchFeedSourceHealth(pool, df.id, { ok: live.some((item) => item.source === df.name) });
+      }
+    }
+
     const items = await newsToCommunityItems(live);
     const { upserted } = items.length ? await upsertCommunityItems(pool, items, 'rss') : { upserted: 0 };
 
@@ -218,11 +239,26 @@ export async function pullFeedSource(source: CommunityFeedSource): Promise<Commu
   const pool = requirePool();
   const t0 = Date.now();
   try {
-    const live = await aggregateRssDigest([source.category], 80, [{
+    const result = await aggregateRssDigest([source.category], 80, [{
       name: source.name,
       url: source.feedUrl,
       category: source.category,
     }]);
+    const live = result.items;
+
+    // If the individual feed errored, record the error
+    if (result.feedErrors.some((fe) => fe.name === source.name)) {
+      const e = result.feedErrors.find((fe) => fe.name === source.name)!;
+      await touchFeedSourceHealth(pool, source.id, { ok: false, error: e.error });
+      return {
+        stream: `rss:${source.id}`,
+        collected: 0,
+        persisted: 0,
+        error: e.error,
+        ms: Date.now() - t0,
+      };
+    }
+
     const ok = live.length > 0;
     await touchFeedSourceHealth(pool, source.id, {
       ok,
@@ -469,9 +505,74 @@ export function startCommunityFeedsWorker(pool: Pool): void {
     pullJudiciumSync().catch((e) => console.warn('[harvest-feeds] judicium-pull failed:', (e as Error).message));
   }, 2 * 3_600_000));
 
+  // Dead-domain recycling — every 4 hours
+  timers.push(setInterval(() => {
+    runDeadDomainRecycle().catch((e) => console.warn('[harvest-feeds] recycle failed:', (e as Error).message));
+  }, 4 * 3_600_000));
+
+  // Auto-repair broken feeds — every 4 hours
+  timers.push(setInterval(() => {
+    runAutoRepair().catch((e) => console.warn('[harvest-feeds] auto-repair failed:', (e as Error).message));
+  }, 4 * 3_600_000));
+
   timers.push(setInterval(() => {
     runCommunityDailyPull().catch((e) => console.warn('[harvest-feeds] daily failed:', (e as Error).message));
   }, dailyMs));
+}
+
+/** Automatically retire feeds with dead domains (DNS failures, expired certs, connection refused). */
+export async function runDeadDomainRecycle(): Promise<number> {
+  const pool = requirePool();
+  try {
+    const retired = await recycleDeadDomains(pool);
+    if (retired > 0) {
+      console.log(`[harvest-feeds] dead-domain recycle: ${retired} feed(s) retired`);
+    }
+    return retired;
+  } catch (err: unknown) {
+    console.warn('[harvest-feeds] dead-domain recycle failed:', (err as Error).message);
+    return 0;
+  }
+}
+
+/** Attempt to auto-repair feeds with 3+ consecutive failures. */
+export async function runAutoRepair(): Promise<{ candidates: number; repaired: number; failed: number }> {
+  const pool = requirePool();
+  let repaired = 0;
+  let failed = 0;
+  try {
+    const candidates = await listRepairCandidates(pool);
+    if (candidates.length === 0) return { candidates: 0, repaired: 0, failed: 0 };
+
+    for (const source of candidates) {
+      try {
+        await recordRepairAttempt(pool, source.id);
+        const result = await repairFeed({ feedUrl: source.feedUrl, siteUrl: source.siteUrl });
+        await recordDiscovery(pool, source.id, {
+          status: result.best ? 'resolved' : 'failed',
+          discoveredUrl: result.best?.feedUrl,
+          confidence: result.best?.score,
+          method: result.best?.discoveredVia,
+        });
+        if (result.autoRepairEligible && result.best) {
+          await recordUrlChange(pool, source.id, source.feedUrl, result.best.feedUrl,
+            'auto-repair: high-confidence discovery');
+          repaired++;
+          console.log(`[harvest-feeds] auto-repaired "${source.name}": ${source.feedUrl} → ${result.best.feedUrl} (score ${result.best.score})`);
+        }
+      } catch {
+        failed++;
+      }
+    }
+
+    if (candidates.length > 0) {
+      console.log(`[harvest-feeds] auto-repair: ${candidates.length} candidates, ${repaired} repaired, ${failed} failed`);
+    }
+    return { candidates: candidates.length, repaired, failed };
+  } catch (err: unknown) {
+    console.warn('[harvest-feeds] auto-repair failed:', (err as Error).message);
+    return { candidates: 0, repaired, failed };
+  }
 }
 
 /** Pull data from Judicium into Harvest (bidirectional sync). */

@@ -1,6 +1,5 @@
 import {
   collectDatabaseStats,
-  fetchCascadesHealth,
   fetchDomainEvents,
   getDatabaseConfigs,
   loadSnapshots,
@@ -8,6 +7,7 @@ import {
   sampleTableRows,
   saveSnapshot,
 } from './collector.js';
+import { fetchCascadesStatus } from '../collection/cascadesClient.js';
 import { inferRegistry, PIPELINE_EDGES, PIPELINE_NODES, statusLabel, TABLE_REGISTRY } from './registry.js';
 import { getLineageForTable, getNarrativeForTable, defaultNarrative } from './narratives.js';
 import type { CatalogCategory, CatalogTableCard, DataCatalogResponse, LivingArchitectureSummary, TableNarrative } from './types.js';
@@ -73,7 +73,7 @@ export async function buildDataCatalog(): Promise<DataCatalogResponse> {
   saveSnapshot(snapshots, snapshotPayload);
   for (const cat of CATEGORY_ORDER) categories[cat].sort((a, b) => (b.live?.rows ?? 0) - (a.live?.rows ?? 0));
   const harvestUrl = configs.find((c) => c.id === 'harvest')?.url;
-  const [cascades, events] = await Promise.all([fetchCascadesHealth(), harvestUrl ? fetchDomainEvents(harvestUrl) : Promise.resolve([])]);
+  const [cascades, events] = await Promise.all([fetchCascadesStatus(), harvestUrl ? fetchDomainEvents(harvestUrl) : Promise.resolve([])]);
   return { generatedAt: new Date().toISOString(), databases: dbSummaries, categories, tables: allCards, pipeline: { nodes: PIPELINE_NODES, edges: PIPELINE_EDGES }, living: buildLiving(allCards), cascades, events };
 }
 

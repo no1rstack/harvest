@@ -1,34 +1,44 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Play, RefreshCw, Crosshair, AlertTriangle, Database } from 'lucide-react';
+import { Play, RefreshCw, Crosshair, AlertTriangle } from 'lucide-react';
 
-interface HarvestTarget {
-  id: string; name: string; category?: string; enabled: boolean;
-  schedule?: string; last_run_at?: string; harvesters?: string[];
-  metadata?: Record<string, unknown>;
+interface CollectionTarget {
+  id: string;
+  target_type: string;
+  value: string;
+  normalized_value: string;
+  product: string;
+  workflow_template: string;
+  priority: number;
+  frequency: string;
+  enabled: boolean;
+  last_collected_at: string | null;
+  next_collect_at: string | null;
 }
 
-const HARVESTERS = ['crtsh','dns','rdap','hackertarget','urlhaus','rss','wayback','holehe','sherlock','maigret'];
+const TARGET_TYPES = ['domain', 'ip_address', 'email', 'url', 'handle', 'organization', 'person'];
 
 export const RegistryPanel: React.FC = () => {
-  const [targets, setTargets] = useState<HarvestTarget[]>([]);
+  const [targets, setTargets] = useState<CollectionTarget[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [newTarget, setNewTarget] = useState('');
-  const [targetCategory, setTargetCategory] = useState('osint');
+  const [targetType, setTargetType] = useState('domain');
   const [newBulk, setNewBulk] = useState('');
-  const [selectedHarvesters, setSelectedHarvesters] = useState<Record<string, boolean>>({});
   const [showBulk, setShowBulk] = useState(false);
 
   const loadTargets = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/harvest/targets');
+      const res = await fetch('/api/collection/targets?limit=200');
       if (!res.ok) throw new Error(`${res.status}`);
       const json = await res.json();
       setTargets(Array.isArray(json.targets) ? json.targets : []);
+      setTotal(json.total ?? 0);
       setError(null);
-    } catch (e: any) { setError(e.message); } finally { setLoading(false); }
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { loadTargets(); }, []);
@@ -36,54 +46,78 @@ export const RegistryPanel: React.FC = () => {
   const toggleEnabled = async (id: string, enabled: boolean) => {
     setBusy(id);
     try {
-      await fetch(`/api/harvest/targets/${id}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Collection-Token': 'harvest-internal' },
+      await fetch(`/api/collection/targets/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled: !enabled }),
       });
       setTargets(prev => prev.map(t => t.id === id ? { ...t, enabled: !enabled } : t));
-    } catch (e: any) { setError(e.message); } finally { setBusy(null); }
+    } catch (e: any) { setError(e.message); }
+    finally { setBusy(null); }
   };
 
   const addTarget = async () => {
-    const name = newTarget.trim(); if (!name) return;
+    const value = newTarget.trim(); if (!value) return;
     setBusy('new');
     try {
-      await fetch('/api/harvest/targets', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Collection-Token': 'harvest-internal' },
-        body: JSON.stringify({ name, category: targetCategory, harvesters: Object.keys(selectedHarvesters).filter(k => selectedHarvesters[k]), enabled: true }),
+      const res = await fetch('/api/collection/targets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value, target_type: targetType }),
       });
-      setNewTarget(''); setSelectedHarvesters({});
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `${res.status}`);
+      }
+      setNewTarget('');
       await loadTargets();
-    } catch (e: any) { setError(e.message); } finally { setBusy(null); }
+    } catch (e: any) { setError(e.message); }
+    finally { setBusy(null); }
   };
 
   const addBulk = async () => {
-    const names = newBulk.split('\n').map(l => l.trim()).filter(Boolean);
-    if (!names.length) return;
+    const values = newBulk.split('\n').map(l => l.trim()).filter(Boolean);
+    if (!values.length) return;
     setBusy('bulk');
-    try {
-      for (const name of names) {
-        await fetch('/api/harvest/targets', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Collection-Token': 'harvest-internal' },
-          body: JSON.stringify({ name, category: targetCategory, harvesters: Object.keys(selectedHarvesters).filter(k => selectedHarvesters[k]), enabled: true }),
+    let ok = 0;
+    for (const value of values) {
+      try {
+        const res = await fetch('/api/collection/targets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value, target_type: targetType }),
         });
-      }
-      setNewBulk(''); setShowBulk(false);
-      await loadTargets();
-    } catch (e: any) { setError(e.message); } finally { setBusy(null); }
+        if (res.ok) ok++;
+      } catch { /* continue */ }
+    }
+    setNewBulk(''); setShowBulk(false);
+    setError(ok === values.length ? null : `${ok}/${values.length} added (some may already exist)`);
+    await loadTargets();
+    setBusy(null);
   };
 
   const runTarget = async (id: string) => {
     setBusy(id);
     try {
-      await fetch(`/api/harvest/targets/${id}/run`, { method: 'POST', headers: { 'X-Collection-Token': 'harvest-internal' } });
-    } catch (e: any) { setError(e.message); } finally { setBusy(null); }
+      const res = await fetch('/api/collection/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetId: id }),
+      });
+      if (!res.ok) throw new Error(`${res.status}`);
+      setError(null);
+    } catch (e: any) { setError(e.message); }
+    finally { setBusy(null); }
   };
 
   return (
     <div className="h-full overflow-auto">
       <div className="p-3 space-y-3">
-        {error && <div className="flex items-start gap-2 p-2 border border-amber-400/20 bg-amber-400/[0.05] text-amber-200/70 text-[11px]"><AlertTriangle size={13} className="mt-0.5 shrink-0"/>{error}</div>}
+        {error && (
+          <div className="flex items-start gap-2 p-2 border border-amber-400/20 bg-amber-400/[0.05] text-amber-200/70 text-[11px]">
+            <AlertTriangle size={13} className="mt-0.5 shrink-0"/>{error}
+          </div>
+        )}
 
         {/* Add target */}
         <div className="border border-ink/[0.05] bg-ink/[0.015] p-3 space-y-3">
@@ -91,26 +125,16 @@ export const RegistryPanel: React.FC = () => {
           <div className="flex flex-wrap gap-2">
             <input value={newTarget} onChange={e => setNewTarget(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addTarget()}
-              placeholder="Target name (domain, IP, handle...)"
+              placeholder="Target value (domain, IP, handle...)"
               className="bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[12px] text-ink/70 flex-1 min-w-[16rem]" />
-            <select value={targetCategory} onChange={e => setTargetCategory(e.target.value)}
+            <select value={targetType} onChange={e => setTargetType(e.target.value)}
               className="bg-noir-bg border border-ink/[0.08] px-2 py-1.5 text-[12px] text-ink/70">
-              <option value="osint">OSINT</option><option value="financial">Financial</option>
-              <option value="legal">Legal</option><option value="threat">Threat Intel</option>
-              <option value="general">General</option>
+              {TARGET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
             <button onClick={addTarget} disabled={!newTarget.trim() || busy === 'new'}
               className="px-3 py-1.5 text-[11px] border border-ink/[0.08] text-ink/60 hover:text-ink/80 disabled:opacity-30">
               <Crosshair size={12} className="inline mr-1"/>Add
             </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {HARVESTERS.map(h => (
-              <label key={h} className="flex items-center gap-1 text-[10px] text-ink/50 cursor-pointer">
-                <input type="checkbox" checked={!!selectedHarvesters[h]} onChange={() => setSelectedHarvesters(s => ({...s, [h]: !s[h]}))}
-                  className="accent-ink/30" />{h}
-              </label>
-            ))}
           </div>
         </div>
 
@@ -131,7 +155,7 @@ export const RegistryPanel: React.FC = () => {
         )}
 
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-ink/40">{targets.length} targets</span>
+          <span className="text-[10px] text-ink/40">{total} targets</span>
           <button onClick={loadTargets} className="text-[10px] text-ink/40 hover:text-ink/60"><RefreshCw size={11} className="inline"/></button>
         </div>
 
@@ -139,20 +163,25 @@ export const RegistryPanel: React.FC = () => {
           <div className="border border-ink/[0.05] overflow-x-auto">
             <table className="w-full text-[11px]">
               <thead><tr className="border-b border-ink/[0.08] text-ink/40 text-[10px] uppercase tracking-wider">
-                <th className="text-left p-2">Target</th><th className="text-left p-2">Category</th><th className="text-left p-2">Enabled</th><th className="text-left p-2">Harvesters</th><th className="text-left p-2">Last Run</th><th className="text-left p-2">Actions</th>
+                <th className="text-left p-2">Value</th>
+                <th className="text-left p-2">Type</th>
+                <th className="text-left p-2">Workflow</th>
+                <th className="text-left p-2">Enabled</th>
+                <th className="text-left p-2">Last Run</th>
+                <th className="text-left p-2">Actions</th>
               </tr></thead>
               <tbody>
                 {targets.map(t => (
                   <tr key={t.id} className="border-b border-ink/[0.03] hover:bg-ink/[0.02]">
-                    <td className="p-2 font-mono text-ink/70">{t.name}</td>
-                    <td className="p-2 text-ink/45">{t.category || 'osint'}</td>
+                    <td className="p-2 font-mono text-ink/70">{t.value}</td>
+                    <td className="p-2 text-ink/45">{t.target_type}</td>
+                    <td className="p-2 text-ink/40 text-[10px]">{t.workflow_template}</td>
                     <td className="p-2">
                       <button onClick={() => toggleEnabled(t.id, t.enabled)} className={t.enabled ? 'text-emerald-400/70' : 'text-ink/30'}>
                         {t.enabled ? 'ON' : 'OFF'}
                       </button>
                     </td>
-                    <td className="p-2 text-ink/40 text-[10px]">{(t.harvesters || []).join(', ') || 'all'}</td>
-                    <td className="p-2 text-ink/40 whitespace-nowrap">{t.last_run_at ? new Date(t.last_run_at).toLocaleString() : '-'}</td>
+                    <td className="p-2 text-ink/40 whitespace-nowrap">{t.last_collected_at ? new Date(t.last_collected_at).toLocaleString() : '-'}</td>
                     <td className="p-2">
                       <button onClick={() => runTarget(t.id)} disabled={busy === t.id}
                         className="text-[10px] text-ink/40 hover:text-sky-400/70 disabled:opacity-30">
@@ -161,6 +190,7 @@ export const RegistryPanel: React.FC = () => {
                     </td>
                   </tr>
                 ))}
+                {!targets.length && <tr><td colSpan={6} className="p-6 text-center text-ink/30 text-[12px]">No targets — add a domain or IP above</td></tr>}
               </tbody>
             </table>
           </div>

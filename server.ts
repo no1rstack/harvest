@@ -126,6 +126,11 @@ app.use('/api/', (req, res, next) => {
     const got = String(req.headers['x-collection-token'] || '');
     if (expected && got === expected) return next();
   }
+  if (apiPath.startsWith('/api/feeds/')) {
+    const expected = process.env.COLLECTION_INTERNAL_TOKEN || '';
+    const got = String(req.headers['x-collection-token'] || '');
+    if (expected && got === expected) return next();
+  }
   const origin = req.headers.origin as string | undefined;
   const referer = req.headers.referer as string | undefined;
   const hostOk = (value: string) =>

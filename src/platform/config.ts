@@ -37,7 +37,7 @@ export function defaultPlatformConfig(): PlatformConfig {
       communityFeeds: communityFeedsModule,
     },
     integrations: {
-      cascadesApiUrl: (process.env.CASCADES_API_URL || 'http://cascades:3000').replace(/\/$/, ''),
+      cascadesApiUrl: process.env.CASCADES_API_URL?.replace(/\/$/, '') ?? null,
       cascadesPublicUrl: (process.env.CASCADES_PUBLIC_URL || 'https://cascades.noirstack.com').replace(/\/$/, ''),
       harvestPublicUrl: (process.env.HARVEST_PUBLIC_URL || 'https://harvest.noirstack.com').replace(/\/$/, ''),
       judiciumPublicUrl: (process.env.JUDICIUM_PUBLIC_URL || 'https://judicium.app').replace(/\/$/, ''),

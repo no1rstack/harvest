@@ -41,52 +41,63 @@ const CATEGORY_SET = new Set([
 ]);
 
 async function fetchRssFeed(url: string, name: string, category: string): Promise<DigestNewsItem[]> {
-  try {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Harvest/1.0 RSS (+https://harvest.noirstack.com)' },
-      signal: AbortSignal.timeout(12_000),
-    });
-    if (!res.ok) return [];
-    const text = await res.text();
-    const parser = new XMLParser({ ignoreAttributes: false });
-    const parsed = parser.parse(text);
-
-    if (parsed?.rss?.channel?.item) {
-      const items = Array.isArray(parsed.rss.channel.item) ? parsed.rss.channel.item : [parsed.rss.channel.item];
-      return items.slice(0, 12).map((item: any) => ({
-        id: `rss:${name}:${item.guid || item.link || Math.random().toString(36)}`,
-        title: String(item.title || 'Untitled'),
-        description: String(item.description || '').replace(/<[^>]*>/g, '').slice(0, 300),
-        link: String(item.link || ''),
-        source: name,
-        category,
-        publishedAt: item.pubDate || new Date().toISOString(),
-      }));
-    }
-
-    if (parsed?.feed?.entry) {
-      const entries = Array.isArray(parsed.feed.entry) ? parsed.feed.entry : [parsed.feed.entry];
-      return entries.slice(0, 12).map((entry: any) => ({
-        id: `atom:${name}:${entry.id || entry.link?.['@_href'] || Math.random().toString(36)}`,
-        title: String(entry.title?.['#text'] || entry.title || 'Untitled'),
-        description: String(entry.summary?.['#text'] || entry.summary || '').replace(/<[^>]*>/g, '').slice(0, 300),
-        link: String(entry.link?.['@_href'] || ''),
-        source: name,
-        category,
-        publishedAt: entry.published || entry.updated || new Date().toISOString(),
-      }));
-    }
-  } catch {
-    /* optional feed */
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'Harvest/1.0 RSS (+https://harvest.noirstack.com)' },
+    signal: AbortSignal.timeout(12_000),
+  });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status} ${res.statusText}`);
   }
+  const text = await res.text();
+  const parser = new XMLParser({ ignoreAttributes: false });
+  const parsed = parser.parse(text);
+
+  if (parsed?.rss?.channel?.item) {
+    const items = Array.isArray(parsed.rss.channel.item) ? parsed.rss.channel.item : [parsed.rss.channel.item];
+    return items.slice(0, 12).map((item: any) => ({
+      id: `rss:${name}:${item.guid || item.link || Math.random().toString(36)}`,
+      title: String(item.title || 'Untitled'),
+      description: String(item.description || '').replace(/<[^>]*>/g, '').slice(0, 300),
+      link: String(item.link || ''),
+      source: name,
+      category,
+      publishedAt: item.pubDate || new Date().toISOString(),
+    }));
+  }
+
+  if (parsed?.feed?.entry) {
+    const entries = Array.isArray(parsed.feed.entry) ? parsed.feed.entry : [parsed.feed.entry];
+    return entries.slice(0, 12).map((entry: any) => ({
+      id: `atom:${name}:${entry.id || entry.link?.['@_href'] || Math.random().toString(36)}`,
+      title: String(entry.title?.['#text'] || entry.title || 'Untitled'),
+      description: String(entry.summary?.['#text'] || entry.summary || '').replace(/<[^>]*>/g, '').slice(0, 300),
+      link: String(entry.link?.['@_href'] || ''),
+      source: name,
+      category,
+      publishedAt: entry.published || entry.updated || new Date().toISOString(),
+    }));
+  }
+
   return [];
+}
+
+export interface RssDigestFeedError {
+  name: string;
+  url: string;
+  category: string;
+  error: string;
+}
+
+export interface RssDigestResult {
+  items: DigestNewsItem[];
+  feedErrors: RssDigestFeedError[];
 }
 
 export async function aggregateRssDigest(
   categories?: string[],
   maxResults = 200,
   extraFeeds: FeedDef[] = [],
-): Promise<DigestNewsItem[]> {
+): Promise<RssDigestResult> {
   const cats = categories?.length
     ? categories.filter((c) => CATEGORY_SET.has(c))
     : [...CATEGORY_SET];
@@ -96,9 +107,25 @@ export async function aggregateRssDigest(
     feeds.map((f) => fetchRssFeed(f.url, f.name, f.category)),
   );
 
+  const feedErrors: RssDigestFeedError[] = [];
+
   const all = batches
-    .filter((r): r is PromiseFulfilledResult<DigestNewsItem[]> => r.status === 'fulfilled')
+    .filter((r): r is PromiseFulfilledResult<DigestNewsItem[]> => {
+      if (r.status === 'rejected') return false;
+      return r.status === 'fulfilled';
+    })
     .flatMap((r) => r.value);
+
+  batches.forEach((r, i) => {
+    if (r.status === 'rejected') {
+      feedErrors.push({
+        name: feeds[i].name,
+        url: feeds[i].url,
+        category: feeds[i].category,
+        error: (r.reason as Error)?.message || String(r.reason),
+      });
+    }
+  });
 
   const seen = new Set<string>();
   const deduped = all.filter((item) => {
@@ -108,9 +135,11 @@ export async function aggregateRssDigest(
     return true;
   });
 
-  return deduped
+  const items = deduped
     .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
     .slice(0, maxResults);
+
+  return { items, feedErrors };
 }
 
 export function getRssCategories(): string[] {

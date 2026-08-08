@@ -22,7 +22,8 @@ export interface CascadesRunDetail {
 }
 
 function cascadesBaseUrl(): string {
-  return (process.env.CASCADES_API_URL || 'http://127.0.0.1:3102').replace(/\/$/, '');
+  if (!process.env.CASCADES_API_URL) throw new Error('CASCADES_API_URL is required (set in Infisical)');
+  return process.env.CASCADES_API_URL.replace(/\/$/, '');
 }
 
 function safeLogMeta(path: string, status: number, requestId: string): string {
@@ -109,4 +110,75 @@ export async function waitForCascadesRun(
     await new Promise((r) => setTimeout(r, pollMs));
   }
   throw new Error(`Cascades run timeout run_id=${runId}`);
+}
+
+// ── Discovery & Observability ──
+
+export interface CascadesWorkflowSummary {
+  id: string;
+  name: string;
+  description?: string;
+  status?: string;
+  version?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CascadesStatus {
+  connected: boolean;
+  url: string;
+  health?: unknown;
+  error?: string;
+  workflowCount: number;
+  workflows: CascadesWorkflowSummary[];
+}
+
+const cascadesFetch = async (path: string, init?: RequestInit): Promise<Response> => {
+  const headers: Record<string, string> = { ...(init?.headers as Record<string, string> || {}) };
+  const token = process.env.COLLECTION_INTERNAL_TOKEN?.trim();
+  if (token) headers['X-Collection-Token'] = token;
+  return fetch(`${cascadesBaseUrl()}${path}`, { ...init, headers, signal: AbortSignal.timeout(10_000) });
+};
+
+export async function listCascadesWorkflows(): Promise<CascadesWorkflowSummary[]> {
+  try {
+    const res = await cascadesFetch('/api/workflows');
+    if (!res.ok) return [];
+    const body = (await res.json()) as { workflows?: Array<Record<string, unknown>> };
+    const list = body.workflows ?? [];
+    return list.map((w: Record<string, unknown>) => ({
+      id: String(w.id || w.workflowId || w.workflow_id || ''),
+      name: String(w.name || w.display_name || w.id || ''),
+      description: w.description ? String(w.description) : undefined,
+      status: w.status ? String(w.status) : undefined,
+      version: typeof w.version === 'number' ? w.version : undefined,
+      createdAt: w.createdAt ? String(w.createdAt) : undefined,
+      updatedAt: w.updatedAt ? String(w.updatedAt) : undefined,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchCascadesStatus(): Promise<CascadesStatus> {
+  const url = cascadesBaseUrl();
+  const result: CascadesStatus = { connected: false, url, workflowCount: 0, workflows: [] };
+
+  try {
+    const healthRes = await cascadesFetch('/health');
+    if (!healthRes.ok) {
+      result.error = `health HTTP ${healthRes.status}`;
+      return result;
+    }
+    result.health = await healthRes.json().catch(() => undefined);
+    result.connected = true;
+  } catch (err: unknown) {
+    result.error = (err as Error).message;
+    return result;
+  }
+
+  const workflows = await listCascadesWorkflows();
+  result.workflows = workflows;
+  result.workflowCount = workflows.length;
+  return result;
 }

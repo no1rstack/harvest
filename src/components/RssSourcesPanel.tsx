@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Search, Upload, Trash2, Play, RefreshCw, CheckSquare, Square,
   Rss, Globe, Clock, Activity, X, Plus, Filter, ChevronDown,
+  Wrench, AlertTriangle, Sparkles,
 } from 'lucide-react';
 import { cn } from '../types';
 
@@ -19,7 +20,60 @@ interface FeedSource {
   lastError?: string;
   adaptiveIntervalMinutes: number;
   consecutiveNoopCount: number;
+  consecutiveFailures: number;
   createdAt: string;
+  // Discovery / repair fields
+  discoveryStatus?: string;
+  discoveredUrl?: string;
+  discoveryConfidence?: number;
+  discoveryMethod?: string;
+  discoveredAt?: string;
+  lastRepairAttemptAt?: string;
+}
+
+interface DiscoverResult {
+  siteUrl: string;
+  inputUrl: string;
+  isDirectFeed: boolean;
+  feeds: Array<{
+    feedUrl: string;
+    feedType: string;
+    title?: string;
+    itemCount: number;
+    newestItemDate?: string;
+    discoveredVia: string;
+    score: number;
+    scoreReasons: string[];
+  }>;
+}
+
+interface RepairResult {
+  sourceId: string;
+  source: string;
+  currentFeedUrl: string;
+  originalUrl: string;
+  siteUrl: string;
+  suggestion: 'auto-repair' | 'recommend' | 'show-only' | 'none';
+  autoRepairEligible: boolean;
+  candidates: Array<{
+    feedUrl: string;
+    feedType: string;
+    title?: string;
+    itemCount: number;
+    newestItemDate?: string;
+    discoveredVia: string;
+    score: number;
+    scoreReasons: string[];
+    isViable: boolean;
+  }>;
+  best?: {
+    feedUrl: string;
+    feedType: string;
+    title?: string;
+    itemCount: number;
+    score: number;
+    scoreReasons: string[];
+  };
 }
 
 interface SourceListResponse {
@@ -75,6 +129,18 @@ export function RssSourcesPanel() {
   const [addCategory, setAddCategory] = useState('osint');
   const [addBusy, setAddBusy] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+
+  // ── Discover mode ──
+  const [discoverMode, setDiscoverMode] = useState(false);
+  const [discoverUrl, setDiscoverUrl] = useState('');
+  const [discoverBusy, setDiscoverBusy] = useState(false);
+  const [discoverResult, setDiscoverResult] = useState<DiscoverResult | null>(null);
+  const [discoverError, setDiscoverError] = useState<string | null>(null);
+
+  // ── Repair state ──
+  const [repairBusy, setRepairBusy] = useState<string | null>(null);
+  const [repairResults, setRepairResults] = useState<Map<string, RepairResult>>(new Map());
+  const [repairExpanded, setRepairExpanded] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -311,6 +377,106 @@ export function RssSourcesPanel() {
     load();
   }, [load]);
 
+  // ── Discover ──
+  const doDiscover = useCallback(async () => {
+    if (!discoverUrl.trim()) return;
+    setDiscoverBusy(true);
+    setDiscoverResult(null);
+    setDiscoverError(null);
+    try {
+      const res = await fetch('/api/feeds/community/sources/discover', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: discoverUrl.trim() }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        setDiscoverResult(d);
+      } else {
+        setDiscoverError(d.error || 'Discovery failed');
+      }
+    } catch (e) {
+      setDiscoverError((e as Error).message);
+    } finally { setDiscoverBusy(false); }
+  }, [discoverUrl]);
+
+  const importDiscovered = useCallback(async (feed: DiscoverResult['feeds'][0], siteUrl: string, inputUrl: string) => {
+    try {
+      const res = await fetch('/api/feeds/community/sources', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: feed.title || new URL(feed.feedUrl).hostname,
+          feed_url: feed.feedUrl,
+          site_url: siteUrl || new URL(feed.feedUrl).origin,
+          category: 'osint',
+          auto_pull: true,
+          discovered_via: `discover:${feed.discoveredVia}`,
+        }),
+      });
+      if (res.ok) {
+        setImportResult(`Added: ${feed.title || feed.feedUrl}`);
+        load();
+      }
+    } catch (e) {
+      setImportResult(`Error: ${(e as Error).message}`);
+    }
+  }, [load]);
+
+  // ── Repair ──
+  const repairSource = useCallback(async (id: string) => {
+    setRepairBusy(id);
+    try {
+      const res = await fetch(`/api/feeds/community/sources/${id}/repair`, { method: 'POST' });
+      const result = await res.json();
+      if (res.ok) {
+        setRepairResults((prev) => {
+          const next = new Map(prev);
+          next.set(id, result);
+          return next;
+        });
+        setRepairExpanded((prev) => {
+          const next = new Set(prev);
+          next.add(id);
+          return next;
+        });
+      }
+    } catch (e) {
+      setImportResult(`Repair error: ${(e as Error).message}`);
+    } finally { setRepairBusy(null); }
+  }, []);
+
+  const acceptRepair = useCallback(async (id: string, newUrl: string, reason: string) => {
+    try {
+      const res = await fetch(`/api/feeds/community/sources/${id}/accept-repair`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: newUrl, reason }),
+      });
+      if (res.ok) {
+        setRepairResults((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+        setImportResult(`Repaired: ${newUrl}`);
+        load();
+      }
+    } catch (e) {
+      setImportResult(`Repair error: ${(e as Error).message}`);
+    }
+  }, [load]);
+
+  const ignoreRepair = useCallback((id: string) => {
+    setRepairResults((prev) => {
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+    setRepairExpanded((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
   if (loading && !data) return <div className="p-8 text-center text-[12px] text-ink/40">Loading RSS sources...</div>;
   if (error) return (
     <div className="border border-ink/[0.08] bg-ink/[0.02] p-8 text-center space-y-3">
@@ -334,9 +500,13 @@ export function RssSourcesPanel() {
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          <button onClick={() => { setShowAdd(true); setAddName(''); setAddUrl(''); setAddCategory('osint'); setAddError(null); }}
+          <button onClick={() => { setShowAdd(true); setAddName(''); setAddUrl(''); setAddCategory('osint'); setAddError(null); setDiscoverMode(false); }}
             className="flex items-center gap-1 px-2.5 py-1.5 border border-ink/[0.10] text-[10px] text-ink/55 hover:text-ink/75">
             <Plus size={10} /> Add Feed
+          </button>
+          <button onClick={() => { setShowAdd(true); setDiscoverMode(true); setDiscoverUrl(''); setDiscoverResult(null); setDiscoverError(null); }}
+            className="flex items-center gap-1 px-2.5 py-1.5 border border-emerald-400/[0.12] text-[10px] text-emerald-400/55 hover:text-emerald-400/75">
+            <Sparkles size={10} /> Discover
           </button>
           <button onClick={() => { setShowImport(true); setImportText(''); }}
             className="flex items-center gap-1 px-2.5 py-1.5 border border-ink/[0.10] text-[10px] text-ink/55 hover:text-ink/75">
@@ -448,7 +618,7 @@ export function RssSourcesPanel() {
       )}
 
       {/* Add Feed form */}
-      {showAdd && (
+      {showAdd && !discoverMode && (
         <div className="border border-emerald-400/[0.12] bg-emerald-400/[0.02] p-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[10px] uppercase tracking-wider text-emerald-400/50">Add RSS Feed</span>
@@ -483,6 +653,63 @@ export function RssSourcesPanel() {
           </div>
           {addError && <div className="text-[10px] text-rose-400/60">{addError}</div>}
           {importResult && <div className="text-[10px] text-emerald-400/50">{importResult}</div>}
+        </div>
+      )}
+
+      {/* Discover feeds panel */}
+      {showAdd && discoverMode && (
+        <div className="border border-sky-400/[0.12] bg-sky-400/[0.02] p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-sky-400/50">
+              <Sparkles size={10} className="inline mr-1" />Discover Feeds
+            </span>
+            <button onClick={() => setShowAdd(false)} className="text-ink/25 hover:text-ink/50"><X size={12} /></button>
+          </div>
+          <div className="text-[10px] text-ink/35">Enter a website URL to auto-discover its RSS feeds</div>
+          <div className="flex gap-2">
+            <input
+              value={discoverUrl}
+              onChange={e => setDiscoverUrl(e.target.value)}
+              placeholder="https://some-news-site.com"
+              className="flex-1 bg-noir-bg border border-ink/[0.08] px-3 py-1.5 text-[11px] text-ink/70 font-mono"
+              onKeyDown={e => e.key === 'Enter' && doDiscover()}
+            />
+            <button onClick={doDiscover} disabled={discoverBusy || !discoverUrl.trim()}
+              className="px-4 py-1.5 bg-sky-400/[0.10] border border-sky-400/[0.20] text-[10px] text-sky-400/75 hover:bg-sky-400/[0.15] disabled:opacity-30 whitespace-nowrap">
+              {discoverBusy ? 'Discovering...' : 'Discover'}
+            </button>
+          </div>
+          {discoverError && <div className="text-[10px] text-rose-400/60">{discoverError}</div>}
+          {discoverResult && discoverResult.feeds.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-[10px] text-sky-400/50">
+                Found {discoverResult.feeds.length} feed{discoverResult.feeds.length > 1 ? 's' : ''}
+                {discoverResult.isDirectFeed ? ' (direct feed)' : ` on ${discoverResult.siteUrl}`}
+              </div>
+              <div className="space-y-1.5">
+                {discoverResult.feeds.map((feed, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-2 border border-ink/[0.06] bg-noir-bg">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[11px] text-ink/65 truncate">{(feed as any).title || feed.feedUrl}</div>
+                      <div className="flex items-center gap-2 text-[9px] text-ink/30 mt-0.5">
+                        <span className="uppercase">{feed.feedType}</span>
+                        {feed.itemCount > 0 && <span>{feed.itemCount} items</span>}
+                        <span>via {feed.discoveredVia}</span>
+                        <span className="text-sky-400/40">score {feed.score}</span>
+                      </div>
+                    </div>
+                    <button onClick={() => importDiscovered(feed, discoverResult.siteUrl, discoverResult.inputUrl)}
+                      className="ml-2 px-3 py-1 bg-emerald-400/[0.08] border border-emerald-400/[0.15] text-[10px] text-emerald-400/70 hover:bg-emerald-400/[0.12] whitespace-nowrap">
+                      {discoverResult.isDirectFeed ? 'Add Feed' : `✓ Add this feed${i > 0 ? ' ' + (i + 1) : ''}`}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {discoverResult && discoverResult.feeds.length === 0 && !discoverError && (
+            <div className="text-[10px] text-ink/30 py-2">No feeds discovered for this URL</div>
+          )}
         </div>
       )}
 
@@ -606,58 +833,114 @@ export function RssSourcesPanel() {
                                  cadence <= 120 ? 'text-amber-400/50' : 'text-ink/20';
 
             return (
-              <div key={s.id}
-                className={cn(
-                  'grid grid-cols-[2rem_2fr_3fr_6rem_6rem_5rem_5rem] gap-1 px-2 py-1.5 text-[11px]',
-                  'hover:bg-ink/[0.015] transition-colors',
-                  isSelected && 'bg-sky-400/[0.04]',
-                )}>
-                <button onClick={() => toggleOne(s.id)} className="flex items-center justify-center">
-                  {isSelected
-                    ? <CheckSquare size={13} className="text-sky-400/60" />
-                    : <Square size={13} className="text-ink/10 hover:text-ink/20" />}
-                </button>
-
-                <div className="truncate">
-                  <span className={cn('text-ink/60', !s.enabled && 'line-through text-ink/25')}>{s.name}</span>
-                  <span className="ml-1.5 text-[9px] opacity-40">{s.category}</span>
-                </div>
-
-                <span className="text-ink/25 font-mono text-[10px] truncate" title={s.feedUrl}>
-                  {s.feedUrl}
-                </span>
-
-                <span className={cn('text-right font-mono text-[10px]', cadenceColor)}>
-                  {cadence}m
-                  {s.consecutiveNoopCount > 0 && <span className="ml-1 text-ink/15">/ {s.consecutiveNoopCount}</span>}
-                </span>
-
-                <span className={cn('text-right text-[10px]',
-                  s.lastOkAt && !s.lastError ? 'text-emerald-400/50' :
-                  s.lastError ? 'text-rose-400/50' : 'text-ink/20')}>
-                  {s.lastOkAt && !s.lastError ? 'OK' :
-                   s.lastError ? 'Error' : '—'}
-                </span>
-
-                <span className="text-right text-ink/20 font-mono text-[10px]">
-                  {ago(s.lastCheckedAt)}
-                </span>
-
-                <div className="flex items-center justify-end gap-1">
-                  <button onClick={() => pullOne(s.id)} disabled={!!isBusy}
-                    className="p-0.5 text-ink/15 hover:text-sky-400/50 disabled:opacity-20" title="Pull now">
-                    {isBusy ? <Activity size={10} className="animate-pulse" /> : <Play size={10} />}
+              <React.Fragment key={s.id}>
+                <div
+                  className={cn(
+                    'grid grid-cols-[2rem_2fr_3fr_6rem_6rem_5rem_5rem] gap-1 px-2 py-1.5 text-[11px]',
+                    'hover:bg-ink/[0.015] transition-colors',
+                    isSelected && 'bg-sky-400/[0.04]',
+                  )}>
+                  <button onClick={() => toggleOne(s.id)} className="flex items-center justify-center">
+                    {isSelected
+                      ? <CheckSquare size={13} className="text-sky-400/60" />
+                      : <Square size={13} className="text-ink/10 hover:text-ink/20" />}
                   </button>
-                  <button onClick={() => {
-                    if (confirm(`Retire "${s.name}"? It'll stop pulling and move to the Retired tab.`)) {
-                      fetch(`/api/feeds/community/sources/${s.id}`, { method: 'DELETE' }).then(() => load());
-                    }
-                  }}
-                    className="p-0.5 text-ink/10 hover:text-rose-400/50" title="Retire">
-                    <Trash2 size={10} />
-                  </button>
+
+                  <div className="truncate">
+                    <span className={cn('text-ink/60', !s.enabled && 'line-through text-ink/25')}>{s.name}</span>
+                    <span className="ml-1.5 text-[9px] opacity-40">{s.category}</span>
+                  </div>
+
+                  <span className="text-ink/25 font-mono text-[10px] truncate" title={s.feedUrl}>
+                    {s.feedUrl}
+                  </span>
+
+                  <span className={cn('text-right font-mono text-[10px]', cadenceColor)}>
+                    {cadence}m
+                    {s.consecutiveNoopCount > 0 && <span className="ml-1 text-ink/15">/ {s.consecutiveNoopCount}</span>}
+                  </span>
+
+                  <span className={cn('text-right text-[10px]',
+                    s.lastOkAt && !s.lastError ? 'text-emerald-400/50' :
+                    s.lastError ? 'text-rose-400/50' : 'text-ink/20')}>
+                    {s.lastOkAt && !s.lastError ? 'OK' :
+                     s.lastError ? 'Error' : '—'}
+                  </span>
+
+                  <span className="text-right text-ink/20 font-mono text-[10px]">
+                    {ago(s.lastCheckedAt)}
+                  </span>
+
+                  <div className="flex items-center justify-end gap-1">
+                    <button onClick={() => pullOne(s.id)} disabled={!!isBusy}
+                      className="p-0.5 text-ink/15 hover:text-sky-400/50 disabled:opacity-20" title="Pull now">
+                      {isBusy ? <Activity size={10} className="animate-pulse" /> : <Play size={10} />}
+                    </button>
+                    {s.lastError && s.enabled !== false && (
+                      <button onClick={() => repairSource(s.id)} disabled={repairBusy === s.id}
+                        className="p-0.5 text-ink/10 hover:text-amber-400/50 disabled:opacity-20" title="Repair — find alternative feed URL">
+                        {repairBusy === s.id ? <Activity size={10} className="animate-pulse" /> : <Wrench size={10} />}
+                      </button>
+                    )}
+                    <button onClick={() => {
+                      if (confirm(`Retire "${s.name}"? It'll stop pulling and move to the Retired tab.`)) {
+                        fetch(`/api/feeds/community/sources/${s.id}`, { method: 'DELETE' }).then(() => load());
+                      }
+                    }}
+                      className="p-0.5 text-ink/10 hover:text-rose-400/50" title="Retire">
+                      <Trash2 size={10} />
+                    </button>
+                  </div>
                 </div>
-              </div>
+                {(() => {
+                  const rr = repairResults.get(s.id);
+                  if (!rr || rr.suggestion === 'none' || !rr.best) return null;
+                  return (
+                    <div className={cn('px-3 py-3 border-t',
+                      rr.suggestion === 'auto-repair' ? 'border-emerald-400/[0.12] bg-emerald-400/[0.02]' :
+                      rr.suggestion === 'recommend' ? 'border-sky-400/[0.12] bg-sky-400/[0.02]' :
+                      'border-amber-400/[0.08] bg-amber-400/[0.01]')}>
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1.5 flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={cn('text-[10px] uppercase tracking-wider font-medium',
+                              rr.suggestion === 'auto-repair' ? 'text-emerald-400/60' :
+                              rr.suggestion === 'recommend' ? 'text-sky-400/60' : 'text-amber-400/60')}>
+                              {rr.suggestion === 'auto-repair' ? 'Auto-Repair Eligible' :
+                               rr.suggestion === 'recommend' ? 'Recommended Replacement' : 'Candidate Found'}
+                            </span>
+                            <span className="text-[9px] text-ink/25">score {rr.best.score}/100</span>
+                          </div>
+                          <div className="text-[10px] text-ink/35">
+                            Current: <span className="line-through text-ink/20">{rr.currentFeedUrl}</span>
+                          </div>
+                          <div className="text-[11px] text-ink/60 font-mono truncate">
+                            Suggested: <span className="text-emerald-400/60">{rr.best.feedUrl}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[9px] text-ink/30">
+                            <span className="uppercase">{rr.best.feedType}</span>
+                            <span>{rr.best.itemCount} items</span>
+                            <span>via {rr.best.discoveredVia}</span>
+                            {rr.best.scoreReasons?.map((r, i) => (
+                              <span key={i} className="text-ink/20">+ {r}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 ml-3 shrink-0">
+                          <button onClick={() => acceptRepair(s.id, rr.best!.feedUrl, `repair: ${rr.suggestion}`)}
+                            className="px-3 py-1.5 bg-emerald-400/[0.10] border border-emerald-400/[0.20] text-[10px] text-emerald-400/75 hover:bg-emerald-400/[0.15] whitespace-nowrap">
+                            Replace URL
+                          </button>
+                          <button onClick={() => ignoreRepair(s.id)}
+                            className="px-3 py-1.5 border border-ink/[0.08] text-[10px] text-ink/35 hover:text-ink/55 whitespace-nowrap">
+                            Ignore
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </React.Fragment>
             );
           })}
           {filtered.length === 0 && (
